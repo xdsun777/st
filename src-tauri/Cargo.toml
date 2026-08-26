@@ -1,0 +1,31 @@
+[package]
+name = "st"
+version = "0.1.0"
+description = "个人自用刷题工具：CSV导入题库、刷题、错题收藏、统计、备份恢复（纯本地离线）"
+authors = ["charm"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "st_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# 本地数据库：SQLite（技术文档 2.整体技术选型）
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+# 文件系统：备份导出、恢复（技术文档 2.整体技术选型）
+tauri-plugin-fs = "2"
+# 文件选择对话框：CSV导入/备份文件选择（前端唤起，Rust侧处理内容）
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Rust侧聚合统计查询使用，需与 tauri-plugin-sql 的 sqlx 版本保持一致
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "macros"] }
