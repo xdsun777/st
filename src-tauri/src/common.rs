@@ -1,7 +1,6 @@
-//! 公共工具：连接池获取、时间戳、判分结果解析、题型/标签校验、题目行解析。
+//! 公共工具：时间戳、判分结果解析、题型/标签校验、题目行解析。
 
 use sqlx::Row;
-use tauri_plugin_sql::DbPool;
 
 use crate::models::{Question, QuestionRow};
 
@@ -13,13 +12,9 @@ pub fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-/// 从插件管理的 DbPool 中取出 SQLite 连接池。
-/// 本项目仅启用 sqlite 特性（技术文档 2：本地数据库 SQLite），
-/// DbPool 此时只有 Sqlite 变体，无需处理其他数据库分支。
-pub fn sqlite_pool(pool: &DbPool) -> Result<&sqlx::SqlitePool, String> {
-    match pool {
-        DbPool::Sqlite(pool) => Ok(pool),
-    }
+/// 取出 SQLite 连接池（命令内统一经由此函数解引用 State）。
+pub fn sqlite_pool(pool: &sqlx::SqlitePool) -> Result<&sqlx::SqlitePool, String> {
+    Ok(pool)
 }
 
 /// 解析最终判分结果：manual_result 优先级高于 machine_result（业务文档 7.3）。

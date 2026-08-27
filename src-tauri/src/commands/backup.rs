@@ -5,7 +5,6 @@
 //! - 异常捕获：文件损坏、格式错误时返回错误，原有数据保持不变（先解析后清库）
 
 use tauri::State;
-use tauri_plugin_sql::DbPool;
 
 use crate::common::{now_ms, sqlite_pool};
 use crate::models::{
@@ -18,7 +17,7 @@ const BACKUP_VERSION: u32 = 1;
 /// 导出全量备份到指定路径（.qpbackup 自定义格式，不与 CSV 互通）
 #[tauri::command]
 pub async fn export_backup(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     path: String,
 ) -> Result<BackupResult, String> {
     if path.trim().is_empty() {
@@ -35,7 +34,7 @@ pub async fn export_backup(
 /// 解析失败或写入失败均不会破坏原有数据。
 #[tauri::command]
 pub async fn import_backup(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     path: String,
 ) -> Result<BackupResult, String> {
     if path.trim().is_empty() {

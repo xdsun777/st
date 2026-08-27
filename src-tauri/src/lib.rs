@@ -1,17 +1,17 @@
-//! 应用入口：注册插件（SQLite、文件系统、对话框）与 Tauri Commands。
+//! 应用入口：初始化 SQLite 连接池与建表迁移，注册插件与 Tauri Commands。
 
 mod commands;
 mod common;
 mod db;
 mod models;
 
+use tauri::Manager;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "linux")]
     {
-        // 默认启用 GPU 渲染
-        // 但如果失败，WebKitGTK 会有错误日志
-        // 我们可以通过环境变量允许动态切换
+        // 默认启用 GPU 渲染；若当前用户无 render 权限，禁用硬件加速避免白屏
         if should_disable_gpu_rendering() {
             std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
             std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
@@ -19,11 +19,11 @@ pub fn run() {
     }
 
     tauri::Builder::default()
-        .plugin(
-            tauri_plugin_sql::Builder::default()
-                .add_migrations("sqlite:st.db", db::migrations())
-                .build(),
-        )
+        .setup(|app| {
+            let pool = init_db(app.handle())?;
+            app.manage(pool);
+            Ok(())
+        })
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
@@ -65,6 +65,26 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+/// 创建 SQLite 连接池（应用配置目录下 st.db）并执行建表迁移。
+fn init_db(app: &tauri::AppHandle) -> Result<sqlx::SqlitePool, Box<dyn std::error::Error>> {
+    use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+    use std::str::FromStr;
+
+    let config_dir = app.path().app_config_dir()?;
+    std::fs::create_dir_all(&config_dir)?;
+    let db_path = config_dir.join("st.db");
+
+    let options = SqliteConnectOptions::from_str(&format!("sqlite://{}", db_path.display()))?
+        .create_if_missing(true)
+        .foreign_keys(true);
+
+    let pool = tauri::async_runtime::block_on(
+        SqlitePoolOptions::new().max_connections(5).connect_with(options),
+    )?;
+
+    tauri::async_runtime::block_on(db::init_schema(&pool))?;
+    Ok(pool)
+}
 
 #[cfg(target_os = "linux")]
 fn should_disable_gpu_rendering() -> bool {
@@ -75,18 +95,9 @@ fn should_disable_gpu_rendering() -> bool {
     if let Ok(file) = File::open("/proc/self/status") {
         let reader = BufReader::new(file);
         let mut gids = Vec::new();
-        
+
         for line in reader.lines() {
             if let Ok(line) = line {
-                if line.starts_with("Gid:") {
-                    // 实际运行中的 GID
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() >= 2 {
-                        if let Ok(_gid) = parts[1].parse::<u32>() {
-                            // 这是实际的 GID，但不是所有组
-                        }
-                    }
-                }
                 if line.starts_with("Groups:") {
                     gids = line
                         .split_whitespace()

@@ -1,0 +1,24 @@
+题目类型,题干,选项,正确答案,解析,标签,所属题库集
+single,以下哪种数据库属于关系型数据库？,"MySQL,Redis,MongoDB,ElasticSearch",A,"关系型数据库采用表格结构存储数据，MySQL 是典型的关系型数据库，而 Redis 是键值型、MongoDB 是文档型、ElasticSearch 是搜索型数据库。",数据库,基础题库
+single,HTTP 状态码 200 表示什么？,"请求成功,重定向,客户端错误,服务器错误",A,"200 OK 表示服务器成功处理了请求。3xx 重定向，4xx 客户端错误，5xx 服务器错误。",网络协议,基础题库
+single,Rust 中用于管理内存的核心机制是什么？,"垃圾回收,手动管理,所有权系统,引用计数",C,"Rust 采用所有权系统（Ownership）在编译时管理内存，不需要垃圾回收，保证了内存安全。",Rust,进阶题库
+multi,以下哪些是面向对象编程的特性？,"封装,继承,多态,泛型",A;B;C,"面向对象三大特性：封装（Encapsulation）、继承（Inheritance）、多态（Polymorphism）。泛型是一种编程范式，不属于 OOP 特性。",编程范式,基础题库
+multi,下列哪些属于 Linux 常用命令？,"ls,cd,dir,rm",A;B;D,"ls 列出目录内容，cd 切换目录，rm 删除文件。dir 是 Windows 命令，Linux 中不常用。",Linux,基础题库
+multi,Rust 中的智能指针类型包括哪些？,"Box<T>,Rc<T>,RefCell<T>,Arc<T>",A;B;C;D,"Box<T> 用于堆分配，Rc<T> 是引用计数指针，RefCell<T> 提供内部可变性，Arc<T> 是线程安全的引用计数指针。",Rust,进阶题库
+judge,在关系型数据库中，主键（Primary Key）的值可以为空。,否,false,"主键必须唯一且非空（NOT NULL），用于唯一标识表中的每条记录。",数据库,基础题库
+judge,HTTPS 使用对称加密和非对称加密混合的方式进行加密传输。,是,true,"HTTPS 握手阶段使用非对称加密交换密钥，后续数据传输使用对称加密，结合了两种加密方式的优势。",网络协议,基础题库
+judge,Rust 的变量默认是可变的（mutable）。,否,false,"Rust 的变量默认是不可变的（immutable），需要显式使用 mut 关键字声明可变变量，这有助于编写更安全的代码。",Rust,进阶题库
+essay,请简述什么是 RESTful API？,"","RESTful API 是一种基于 HTTP 协议的软件架构风格，使用 URL 定位资源，HTTP 方法（GET/POST/PUT/DELETE）操作资源，具有无状态、统一接口等特征。","RESTful API 核心要点：① 资源导向（URL）② HTTP 方法表示操作 ③ 无状态通信 ④ 返回 JSON/XML 数据。",网络协议,进阶题库
+essay,解释 Rust 中的所有权转移（Move）机制。,"","所有权转移是 Rust 的核心规则之一：当将一个变量赋值给另一个变量时，原变量的所有权会转移到新变量，原变量将失效，避免双重释放。","例如：let s1 = String::from("hello"); let s2 = s1; // s1 不再有效。这与浅拷贝不同，Rust 会进行所有权移动。",Rust,进阶题库
+fill,在 Linux 系统中，用于查看当前目录下所有文件的命令是____。,"","ls -a","ls 列出文件，-a 参数表示显示所有文件（包括隐藏文件）。",Linux,基础题库
+fill,Rust 中用于处理可能为空的值的枚举类型是____。,"","Option","Option 是 Rust 标准库中的枚举，包含 Some(T) 和 None 两个变体，用于表示可能存在或不存在的值。",Rust,进阶题库
+fill,HTTP 协议中，GET 请求的参数通常在____中传递。,"","URL","GET 请求将参数附加在 URL 的查询字符串中（如 ?key=value），而 POST 请求将参数放在请求体中。",网络协议,基础题库
+single,在数据库设计中，什么是范式（Normalization）？,"数据冗余的方法,数据组织规范,索引优化技术,查询优化策略",B,"范式是数据库表结构设计的规范标准，目的是减少数据冗余和避免数据异常。常见范式有 1NF、2NF、3NF 等。",数据库,进阶题库
+multi,以下哪些协议属于应用层协议？,"HTTP,FTP,TCP,UDP",A;B,"HTTP（超文本传输协议）和 FTP（文件传输协议）属于应用层。TCP 和 UDP 属于传输层协议。",网络协议,进阶题库
+judge,在 Rust 中，使用 & 符号表示借用（Borrowing）。,是,true,"& 表示不可变借用，&mut 表示可变借用。借用允许在不转移所有权的情况下使用变量。",Rust,进阶题库
+single,Rust 中的 Result 枚举类型主要用于什么？,"错误处理,空值处理,类型转换,内存管理",A,"Result 是 Rust 用于错误处理的枚举类型，包含 Ok(T) 和 Err(E) 两个变体，强制开发者处理潜在错误。",Rust,进阶题库
+essay,请说明 Linux 中硬链接和符号链接的区别。,"","硬链接（Hard Link）：指向同一 inode，不能跨文件系统，原文件删除后仍然有效。符号链接（Symbolic Link）：指向路径，可以跨文件系统，原文件删除后失效。","硬链接相当于给文件起了多个名字，而符号链接相当于快捷方式。使用 ln 创建硬链接，ln -s 创建符号链接。",Linux,进阶题库
+fill,在 Git 中，用于切换到其他分支的命令是 git ____。,"","checkout","git checkout <branch-name> 用于切换分支。在较新版本中，也可以使用 git switch <branch-name>。",Git,基础题库
+single,RESTful API 中，更新资源通常使用哪个 HTTP 方法？,"GET,POST,PUT,DELETE",C,"PUT 方法用于完全更新资源，PATCH 用于部分更新。GET 查询，POST 创建，DELETE 删除。",网络协议,进阶题库
+multi,以下哪些技术属于前端开发范畴？,"HTML,CSS,JavaScript,Rust",A;B;C,"HTML（结构）、CSS（样式）、JavaScript（交互）是前端三大基础技术。Rust 主要用于系统编程和后端开发。",前端,基础题库
+judge,SQL 的 DELETE 语句可以删除表中的数据，但不能删除表结构。,是,true,"DELETE 只删除数据行，不删除表结构。DROP TABLE 会删除整个表（结构和数据）。",数据库,基础题库

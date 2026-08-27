@@ -5,14 +5,13 @@
 //! - 删除标签仅清除题目标记，不删除题目
 
 use tauri::State;
-use tauri_plugin_sql::DbPool;
 
 use crate::common::{is_valid_tag_name, sqlite_pool};
 use crate::models::Tag;
 
 /// 标签列表
 #[tauri::command]
-pub async fn list_tags(pool: State<'_, DbPool>) -> Result<Vec<Tag>, String> {
+pub async fn list_tags(pool: State<'_, sqlx::SqlitePool>) -> Result<Vec<Tag>, String> {
     let pool = sqlite_pool(&pool)?;
     let tags = sqlx::query_as::<_, Tag>("SELECT id, name FROM tag ORDER BY name")
         .fetch_all(pool)
@@ -23,7 +22,7 @@ pub async fn list_tags(pool: State<'_, DbPool>) -> Result<Vec<Tag>, String> {
 
 /// 新建标签：同名标签直接返回已有（tag.name UNIQUE）
 #[tauri::command]
-pub async fn create_tag(pool: State<'_, DbPool>, name: String) -> Result<Tag, String> {
+pub async fn create_tag(pool: State<'_, sqlx::SqlitePool>, name: String) -> Result<Tag, String> {
     let name = name.trim();
     if !is_valid_tag_name(name) {
         return Err("标签名不能为空，且不能包含逗号或分号".into());
@@ -39,7 +38,7 @@ pub async fn create_tag(pool: State<'_, DbPool>, name: String) -> Result<Tag, St
 
 /// 删除标签：清除题目上的该标签标记，不删除题目
 #[tauri::command]
-pub async fn delete_tag(pool: State<'_, DbPool>, tag_id: i64) -> Result<(), String> {
+pub async fn delete_tag(pool: State<'_, sqlx::SqlitePool>, tag_id: i64) -> Result<(), String> {
     let pool = sqlite_pool(&pool)?;
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
     sqlx::query("DELETE FROM question_tag WHERE tag_id = ?1")

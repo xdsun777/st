@@ -5,7 +5,6 @@
 //! - practice_session 只保留一份有效会话，新建刷题时覆盖旧会话
 
 use tauri::State;
-use tauri_plugin_sql::DbPool;
 
 use crate::common::{now_ms, sqlite_pool};
 use crate::models::PracticeSession;
@@ -15,7 +14,7 @@ const VALID_MODES: [&str; 2] = ["order", "random"];
 /// 保存刷题会话（覆盖旧会话）
 #[tauri::command]
 pub async fn save_practice_session(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     bank_id: Option<i64>,
     tag_filter: Option<String>,
     current_index: i64,
@@ -67,7 +66,7 @@ pub async fn save_practice_session(
 /// 加载当前刷题会话（无会话返回 null）
 #[tauri::command]
 pub async fn load_practice_session(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
 ) -> Result<Option<PracticeSession>, String> {
     let pool = sqlite_pool(&pool)?;
     let session = sqlx::query_as::<_, PracticeSession>(
@@ -84,7 +83,7 @@ pub async fn load_practice_session(
 
 /// 清除刷题会话（切换/新建刷题时旧进度作废）
 #[tauri::command]
-pub async fn clear_practice_session(pool: State<'_, DbPool>) -> Result<(), String> {
+pub async fn clear_practice_session(pool: State<'_, sqlx::SqlitePool>) -> Result<(), String> {
     let pool = sqlite_pool(&pool)?;
     sqlx::query("DELETE FROM practice_session")
         .execute(pool)

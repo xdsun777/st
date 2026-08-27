@@ -5,14 +5,13 @@
 //! - 删除题库集：二次确认在前端完成；删除后集合内所有题目一并删除
 
 use tauri::State;
-use tauri_plugin_sql::DbPool;
 
 use crate::common::{now_ms, sqlite_pool};
 use crate::models::Bank;
 
 /// 题库集列表（含各题库集题目数，LEFT JOIN 聚合）
 #[tauri::command]
-pub async fn get_banks(pool: State<'_, DbPool>) -> Result<Vec<Bank>, String> {
+pub async fn get_banks(pool: State<'_, sqlx::SqlitePool>) -> Result<Vec<Bank>, String> {
     let pool = sqlite_pool(&pool)?;
     let banks = sqlx::query_as::<_, Bank>(
         "SELECT b.id, b.name, b.create_time, COUNT(q.id) AS question_count
@@ -29,7 +28,7 @@ pub async fn get_banks(pool: State<'_, DbPool>) -> Result<Vec<Bank>, String> {
 
 /// 新建题库集
 #[tauri::command]
-pub async fn create_bank(pool: State<'_, DbPool>, name: String) -> Result<Bank, String> {
+pub async fn create_bank(pool: State<'_, sqlx::SqlitePool>, name: String) -> Result<Bank, String> {
     let name = name.trim();
     if name.is_empty() {
         return Err("题库集名称不能为空".into());
@@ -54,7 +53,7 @@ pub async fn create_bank(pool: State<'_, DbPool>, name: String) -> Result<Bank, 
 /// 重命名题库集
 #[tauri::command]
 pub async fn rename_bank(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     bank_id: i64,
     name: String,
 ) -> Result<(), String> {
@@ -78,7 +77,7 @@ pub async fn rename_bank(
 /// 删除题库集：显式按层级删除题目、做题记录、标签关联、刷题会话，
 /// 不依赖外键开关，确保「删除题库集时集合内所有题目一并删除」。
 #[tauri::command]
-pub async fn delete_bank(pool: State<'_, DbPool>, bank_id: i64) -> Result<(), String> {
+pub async fn delete_bank(pool: State<'_, sqlx::SqlitePool>, bank_id: i64) -> Result<(), String> {
     let pool = sqlite_pool(&pool)?;
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 

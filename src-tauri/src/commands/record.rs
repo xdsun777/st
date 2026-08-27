@@ -8,7 +8,6 @@
 //! - 收藏独立于错题；删除题目时收藏随记录级联删除自动取消
 
 use tauri::State;
-use tauri_plugin_sql::DbPool;
 
 use crate::common::{now_ms, resolve_result, row_to_question, sqlite_pool};
 use crate::models::{AnswerRecord, Question, SubmitAnswerInput};
@@ -17,7 +16,7 @@ use crate::models::{AnswerRecord, Question, SubmitAnswerInput};
 /// 最终对错 = manual_result（优先） ?? machine_result。
 #[tauri::command]
 pub async fn submit_answer(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     input: SubmitAnswerInput,
 ) -> Result<AnswerRecord, String> {
     let pool = sqlite_pool(&pool)?;
@@ -84,7 +83,7 @@ pub async fn submit_answer(
 /// 仅更新标记，做题记录与 fault_count 完整保留（业务文档 4.5.3）。
 #[tauri::command]
 pub async fn update_fault(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     question_id: i64,
     is_fault: bool,
 ) -> Result<(), String> {
@@ -102,7 +101,7 @@ pub async fn update_fault(
 /// 若题目从未作答，则创建一条仅承载收藏标记的记录；取消收藏后保留空记录。
 #[tauri::command]
 pub async fn update_collect(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     question_id: i64,
     is_collect: bool,
 ) -> Result<(), String> {
@@ -156,7 +155,7 @@ pub async fn update_collect(
 /// 错题本：is_fault=1 的题目（按题目去重，仅存一条），支持标签筛选
 #[tauri::command]
 pub async fn get_fault_questions(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     tag_id: Option<i64>,
 ) -> Result<Vec<Question>, String> {
     let pool = sqlite_pool(&pool)?;
@@ -186,7 +185,7 @@ pub async fn get_fault_questions(
 /// 收藏题目列表：is_collect=1 的题目（按题目去重），支持标签筛选
 #[tauri::command]
 pub async fn get_collect_questions(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     tag_id: Option<i64>,
 ) -> Result<Vec<Question>, String> {
     let pool = sqlite_pool(&pool)?;
@@ -216,7 +215,7 @@ pub async fn get_collect_questions(
 /// 某题的做题记录列表（统计/复盘用）
 #[tauri::command]
 pub async fn get_answer_records(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     question_id: i64,
 ) -> Result<Vec<AnswerRecord>, String> {
     let pool = sqlite_pool(&pool)?;

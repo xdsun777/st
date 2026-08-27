@@ -6,7 +6,6 @@
 //! - 修改原题题干/答案不清除历史错题、做题记录
 
 use tauri::State;
-use tauri_plugin_sql::DbPool;
 
 use crate::commands::tag::set_question_tags;
 use crate::common::{is_valid_q_type, now_ms, row_to_question, sqlite_pool};
@@ -15,7 +14,7 @@ use crate::models::{BatchInsertResult, NewQuestion, Question, QuestionInput};
 /// 题目列表：支持按题库集、按标签筛选；返回题目及其标签名列表
 #[tauri::command]
 pub async fn get_questions(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     bank_id: Option<i64>,
     tag_id: Option<i64>,
 ) -> Result<Vec<Question>, String> {
@@ -43,7 +42,7 @@ pub async fn get_questions(
 
 /// 单个题目
 #[tauri::command]
-pub async fn get_question(pool: State<'_, DbPool>, question_id: i64) -> Result<Question, String> {
+pub async fn get_question(pool: State<'_, sqlx::SqlitePool>, question_id: i64) -> Result<Question, String> {
     let pool = sqlite_pool(&pool)?;
     let row = sqlx::query(
         "SELECT q.id, q.bank_id, q.q_type, q.content, q.options, q.answer, q.analysis,
@@ -65,7 +64,7 @@ pub async fn get_question(pool: State<'_, DbPool>, question_id: i64) -> Result<Q
 /// 新增单道题目（含标签关联，事务）
 #[tauri::command]
 pub async fn create_question(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     input: QuestionInput,
 ) -> Result<Question, String> {
     validate_input(&input)?;
@@ -109,7 +108,7 @@ pub async fn create_question(
 /// 更新题目（含标签关联，事务）。修改题干/答案不清除历史做题记录（业务文档 4.5.4）。
 #[tauri::command]
 pub async fn update_question(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     question_id: i64,
     input: QuestionInput,
 ) -> Result<Question, String> {
@@ -159,7 +158,7 @@ pub async fn update_question(
 
 /// 删除题目：显式删除做题记录、标签关联与题目本身（收藏随记录删除自动取消，业务文档 4.6）
 #[tauri::command]
-pub async fn delete_question(pool: State<'_, DbPool>, question_id: i64) -> Result<(), String> {
+pub async fn delete_question(pool: State<'_, sqlx::SqlitePool>, question_id: i64) -> Result<(), String> {
     let pool = sqlite_pool(&pool)?;
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
@@ -188,7 +187,7 @@ pub async fn delete_question(pool: State<'_, DbPool>, question_id: i64) -> Resul
 /// - 同一题库集内题干重复 → 保留原有题目，跳过并记录原因（业务文档 4.2.3）
 #[tauri::command]
 pub async fn batch_insert_questions(
-    pool: State<'_, DbPool>,
+    pool: State<'_, sqlx::SqlitePool>,
     bank_id: i64,
     questions: Vec<NewQuestion>,
 ) -> Result<BatchInsertResult, String> {

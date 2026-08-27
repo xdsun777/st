@@ -12,7 +12,7 @@ export interface QuestionBank {
   question_count: number;
 }
 
-/** 题目 question */
+/** 题目 question（含标签名列表） */
 export interface Question {
   id: number;
   bank_id: number;
@@ -27,6 +27,35 @@ export interface Question {
   analysis: string | null;
   create_time: number;
   update_time: number;
+  tags: string[];
+}
+
+/** 单题新增/编辑入参 */
+export interface QuestionInput {
+  bank_id: number;
+  q_type: QuestionType;
+  content: string;
+  options: string | null;
+  answer: string;
+  analysis: string | null;
+  tags: string[];
+}
+
+/** CSV 批量导入的题目行 */
+export interface NewQuestion {
+  q_type: QuestionType;
+  content: string;
+  options: string | null;
+  answer: string;
+  analysis: string | null;
+  tags: string[];
+}
+
+/** 批量导入结果 */
+export interface BatchInsertResult {
+  inserted: number;
+  skipped: number;
+  skipped_details: string[];
 }
 
 /** 标签 tag */
@@ -54,6 +83,14 @@ export interface AnswerRecord {
   finish_time: number;
 }
 
+/** 提交作答入参 */
+export interface SubmitAnswerInput {
+  question_id: number;
+  user_answer: string | null;
+  machine_result: number | null;
+  manual_result: number | null;
+}
+
 /** 刷题会话 practice_session：保存中途退出的刷题进度 */
 export interface PracticeSession {
   id: number;
@@ -65,7 +102,7 @@ export interface PracticeSession {
   create_time: number;
 }
 
-/** 统计汇总（技术文档 5.4） */
+/** 全局统计汇总（技术文档 5.4） */
 export interface StatsSummary {
   total_questions: number;
   total_records: number;
@@ -73,4 +110,26 @@ export interface StatsSummary {
   wrong_count: number;
   /** 整体正确率，百分数（0-100），保留两位小数 */
   correct_rate: number;
+}
+
+/** 分题库统计 */
+export interface BankStats {
+  bank_id: number;
+  bank_name: string;
+  total_questions: number;
+  total_records: number;
+  correct_count: number;
+  wrong_count: number;
+  correct_rate: number;
+}
+
+/** 备份导出/恢复结果 */
+export interface BackupResult {
+  path: string;
+  question_banks: number;
+  questions: number;
+  tags: number;
+  question_tags: number;
+  answer_records: number;
+  practice_sessions: number;
 }

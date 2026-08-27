@@ -4,14 +4,13 @@
 //! 删除题目时 answer_record 级联删除，统计数据自动同步更新（业务文档 7.4）。
 
 use tauri::State;
-use tauri_plugin_sql::DbPool;
 
 use crate::common::sqlite_pool;
 use crate::models::{BankStats, StatsSummary};
 
 /// 全局统计：总题量、总刷题量、正确数、错误数、整体正确率
 #[tauri::command]
-pub async fn get_stats(pool: State<'_, DbPool>) -> Result<StatsSummary, String> {
+pub async fn get_stats(pool: State<'_, sqlx::SqlitePool>) -> Result<StatsSummary, String> {
     let pool = sqlite_pool(&pool)?;
     let row: (i64, i64, i64, i64) = sqlx::query_as(
         "SELECT
@@ -38,7 +37,7 @@ pub async fn get_stats(pool: State<'_, DbPool>) -> Result<StatsSummary, String> 
 
 /// 分题库统计：按 bank_id 分组统计（业务文档 5.1「分题库统计」）
 #[tauri::command]
-pub async fn get_bank_stats(pool: State<'_, DbPool>) -> Result<Vec<BankStats>, String> {
+pub async fn get_bank_stats(pool: State<'_, sqlx::SqlitePool>) -> Result<Vec<BankStats>, String> {
     let pool = sqlite_pool(&pool)?;
     let rows: Vec<(i64, String, i64, i64, i64, i64)> = sqlx::query_as(
         "SELECT
