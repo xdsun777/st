@@ -18,8 +18,8 @@ export function deleteBank(bankId: number): Promise<void> {
   return invoke<void>("delete_bank", { bankId });
 }
 
-export function getQuestions(bankId: number | null): Promise<Question[]> {
-  return invoke<Question[]>("get_questions", { bankId });
+export function getQuestions(bankId: number | null, tagId: number | null = null): Promise<Question[]> {
+  return invoke<Question[]>("get_questions", { bankId, tagId });
 }
 
 export function getStats(): Promise<StatsSummary> {

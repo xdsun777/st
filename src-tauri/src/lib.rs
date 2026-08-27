@@ -1,6 +1,7 @@
 //! 应用入口：注册插件（SQLite、文件系统、对话框）与 Tauri Commands。
 
 mod commands;
+mod common;
 mod db;
 mod models;
 
@@ -26,11 +27,39 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            commands::get_banks,
-            commands::create_bank,
-            commands::delete_bank,
-            commands::get_questions,
-            commands::get_stats,
+            // 题库集
+            commands::bank::get_banks,
+            commands::bank::create_bank,
+            commands::bank::rename_bank,
+            commands::bank::delete_bank,
+            // 题目与批量导入
+            commands::question::get_questions,
+            commands::question::get_question,
+            commands::question::create_question,
+            commands::question::update_question,
+            commands::question::delete_question,
+            commands::question::batch_insert_questions,
+            // 标签
+            commands::tag::list_tags,
+            commands::tag::create_tag,
+            commands::tag::delete_tag,
+            // 刷题会话
+            commands::practice::save_practice_session,
+            commands::practice::load_practice_session,
+            commands::practice::clear_practice_session,
+            // 做题记录 / 错题 / 收藏
+            commands::record::submit_answer,
+            commands::record::update_fault,
+            commands::record::update_collect,
+            commands::record::get_fault_questions,
+            commands::record::get_collect_questions,
+            commands::record::get_answer_records,
+            // 统计
+            commands::stats::get_stats,
+            commands::stats::get_bank_stats,
+            // 备份
+            commands::backup::export_backup,
+            commands::backup::import_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -53,7 +82,7 @@ fn should_disable_gpu_rendering() -> bool {
                     // 实际运行中的 GID
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if parts.len() >= 2 {
-                        if let Ok(gid) = parts[1].parse::<u32>() {
+                        if let Ok(_gid) = parts[1].parse::<u32>() {
                             // 这是实际的 GID，但不是所有组
                         }
                     }
