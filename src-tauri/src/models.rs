@@ -77,7 +77,8 @@ pub struct QuestionInput {
     pub tags: Vec<String>,
 }
 
-/// CSV 批量导入的题目行（无 bank_id，由命令参数统一指定）
+/// CSV 批量导入的题目行（bank_name 为 CSV「所属题库集」列，可选；
+/// 为空时归入命令参数指定的默认题库集）
 #[derive(Debug, Clone, Deserialize)]
 pub struct NewQuestion {
     pub q_type: String,
@@ -86,6 +87,8 @@ pub struct NewQuestion {
     pub answer: String,
     pub analysis: Option<String>,
     pub tags: Vec<String>,
+    #[serde(default)]
+    pub bank_name: Option<String>,
 }
 
 /// 批量导入结果

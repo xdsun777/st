@@ -49,6 +49,8 @@ export interface NewQuestion {
   answer: string;
   analysis: string | null;
   tags: string[];
+  /** CSV「所属题库集」列，可选；为空时归入默认题库集 */
+  bank_name: string | null;
 }
 
 /** 批量导入结果 */

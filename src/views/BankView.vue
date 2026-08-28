@@ -201,6 +201,12 @@ onMounted(async () => {
         </button>
         <button
           class="shrink-0 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50"
+          @click="csvImportOpen = true"
+        >
+          导入 CSV
+        </button>
+        <button
+          class="shrink-0 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50"
           @click="tagManagerOpen = true"
         >
           标签管理
@@ -264,12 +270,6 @@ onMounted(async () => {
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <TagFilter v-model="tagId" />
         <div class="flex gap-2">
-          <button
-            class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50"
-            @click="csvImportOpen = true"
-          >
-            导入 CSV
-          </button>
           <button
             class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
             @click="openCreateQuestion"

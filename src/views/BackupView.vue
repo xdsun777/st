@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { save } from "@tauri-apps/plugin-dialog";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
 import { exportBackup, importBackup } from "../api";
 import type { BackupResult } from "../types";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
@@ -41,7 +40,7 @@ async function handleExport() {
 async function handlePickRestore() {
   errorMsg.value = "";
   message.value = "";
-  const selected = await open({
+  const selected = await openDialog({
     multiple: false,
     filters: [{ name: "刷题备份包", extensions: ["qpbackup"] }],
   });

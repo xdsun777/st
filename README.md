@@ -43,12 +43,12 @@
 
 # 连接真机/模拟器调试
 
-   npm run tauri android dev
+   `npm run tauri android dev`
 
 # 打 debug APK（仅 arm64，较快）
 
-   npm run tauri android build -- --debug --target aarch64
+   `npm run tauri android build -- --debug --target aarch64`
 
 # 打 release APK（需先生成签名密钥）
 
-   npm run tauri android build -- --target aarch64
+   `npm run tauri android build -- --target aarch64`

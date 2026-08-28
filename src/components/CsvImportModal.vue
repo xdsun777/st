@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { readTextFile } from "@tauri-apps/plugin-fs";
 import { batchInsertQuestions } from "../api";
 import { parseCsv } from "../utils/csv";
@@ -42,7 +42,7 @@ watch(
 async function chooseFile() {
   errorMsg.value = "";
   importResult.value = "";
-  const selected = await open({
+  const selected = await openDialog({
     multiple: false,
     filters: [{ name: "CSV 文件", extensions: ["csv"] }],
   });
@@ -104,7 +104,14 @@ function reset() {
 
       <div class="flex-1 space-y-3 overflow-y-auto px-5 py-4">
         <div class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
-          导入到题库集：<span class="font-medium text-gray-700">{{ bankName }}</span>
+          <template v-if="bankName">
+            默认题库集：<span class="font-medium text-gray-700">{{ bankName }}</span>
+            <br />CSV 含「所属题库集」列时，将按该列自动归入/创建题库集。
+          </template>
+          <template v-else>
+            未选择题库集：将使用 CSV 的「所属题库集」列自动创建/归入题库集；
+            <br />无该列的行将跳过。
+          </template>
           <br />字段规范：题目类型(必填)、题干(必填)、正确答案(必填)、选项/解析/标签/所属题库集(可选)。
           错误行将跳过并展示。
         </div>

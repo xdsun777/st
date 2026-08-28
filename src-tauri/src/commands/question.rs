@@ -184,6 +184,7 @@ pub async fn delete_question(pool: State<'_, sqlx::SqlitePool>, question_id: i64
 
 /// CSV 批量导入题目（事务）。逐行校验：
 /// - 题型非法、题干为空、答案为空 → 跳过并记录原因
+/// - 行带「所属题库集」列 → 按名称创建/复用题库集并归入；否则归入默认 bank_id
 /// - 同一题库集内题干重复 → 保留原有题目，跳过并记录原因（业务文档 4.2.3）
 #[tauri::command]
 pub async fn batch_insert_questions(
@@ -193,6 +194,14 @@ pub async fn batch_insert_questions(
 ) -> Result<BatchInsertResult, String> {
     let pool = sqlite_pool(&pool)?;
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    // 默认题库集是否有效（仅当某行未指定「所属题库集」时需要）
+    let default_bank_exists: Option<(i64,)> =
+        sqlx::query_as("SELECT id FROM question_bank WHERE id = ?1")
+            .bind(bank_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
 
     let mut inserted: i64 = 0;
     let mut skipped: i64 = 0;
@@ -219,11 +228,29 @@ pub async fn batch_insert_questions(
             continue;
         }
 
+        // 确定归属题库集：优先用行的「所属题库集」，否则用默认题库集
+        let bank_name = q.bank_name.as_deref().map(str::trim).filter(|s| !s.is_empty());
+        let row_bank_id: i64 = match bank_name {
+            Some(name) => ensure_bank(&mut tx, name).await?,
+            None => {
+                if default_bank_exists.is_some() {
+                    bank_id
+                } else {
+                    skipped += 1;
+                    skipped_details.push(format!(
+                        "第{}行：未指定所属题库集，且默认题库集不存在",
+                        line_no
+                    ));
+                    continue;
+                }
+            }
+        };
+
         // 重复题干：保留原有题目，不重复新增
         let dup: Option<(i64,)> = sqlx::query_as(
             "SELECT id FROM question WHERE bank_id = ?1 AND content = ?2 LIMIT 1",
         )
-        .bind(bank_id)
+        .bind(row_bank_id)
         .bind(content)
         .fetch_optional(&mut *tx)
         .await
@@ -239,7 +266,7 @@ pub async fn batch_insert_questions(
             "INSERT INTO question (bank_id, q_type, content, options, answer, analysis, create_time, update_time)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
         )
-        .bind(bank_id)
+        .bind(row_bank_id)
         .bind(q.q_type.as_str())
         .bind(content)
         .bind(q.options.as_deref())
@@ -262,6 +289,30 @@ pub async fn batch_insert_questions(
         skipped,
         skipped_details,
     })
+}
+
+/// 按名称查找/创建题库集（事务内），返回题库集 id
+async fn ensure_bank(conn: &mut sqlx::SqliteConnection, name: &str) -> Result<i64, String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err("题库集名称不能为空".into());
+    }
+    if let Some((id,)) = sqlx::query_as("SELECT id FROM question_bank WHERE name = ?1")
+        .bind(name)
+        .fetch_optional(&mut *conn)
+        .await
+        .map_err(|e| e.to_string())?
+    {
+        return Ok(id);
+    }
+    let id = sqlx::query("INSERT INTO question_bank (name, create_time) VALUES (?1, ?2)")
+        .bind(name)
+        .bind(now_ms())
+        .execute(&mut *conn)
+        .await
+        .map_err(|e| e.to_string())?
+        .last_insert_rowid();
+    Ok(id)
 }
 
 fn validate_input(input: &QuestionInput) -> Result<(), String> {

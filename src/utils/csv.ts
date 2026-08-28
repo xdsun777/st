@@ -34,6 +34,7 @@ const HEADER_ALIASES: Record<string, string[]> = {
   answer: ["正确答案", "答案", "answer"],
   analysis: ["解析", "analysis"],
   tags: ["标签", "tags"],
+  bank: ["所属题库集", "题库集", "bank"],
 };
 
 function pickField(row: Record<string, string>, aliases: string[]): string | undefined {
@@ -61,19 +62,63 @@ function parseTags(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
-/** 解析选项：CSV 中选项为空则 null；否则原样存为 JSON 字符串（按文档 options 为 JSON 字符串） */
+/** 解析选项：支持逗号、换行、| 、；分隔；存为 JSON 字符串数组 */
 function parseOptions(raw: string | undefined, qType: QuestionType): string | null {
   if (!raw || !raw.trim()) return null;
-  // 将一行一个选项（换行或 | 或 ；分隔）标准化为 JSON 字符串数组
-  const parts = raw
-    .split(/\r?\n|\||；/)
+  // 先按逗号拆分（CSV 引号内的逗号分隔选项），拆分不足 2 个时再按换行/|/；拆分
+  let parts = raw
+    .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+  if (parts.length < 2) {
+    parts = raw
+      .split(/\r?\n|\||；/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
   if (parts.length === 0) return null;
   if (qType === "single" || qType === "multi") {
     return JSON.stringify(parts);
   }
   return null;
+}
+
+/** 答案规范化：多选答案兼容分号分隔（data.csv 使用 A;B;C），统一为逗号分隔 */
+function normalizeAnswer(raw: string, qType: QuestionType): string {
+  let answer = raw.trim();
+  if (qType === "multi") {
+    answer = answer.replace(/[;；]/g, ",");
+  }
+  return answer;
+}
+
+/**
+ * 单选/多选答案若是选项字母（A/B/C…），映射为对应选项文本。
+ * 例：选项 ["MySQL","Redis"]，答案 "A" → "MySQL"；多选 "A,B" → "MySQL,Redis"。
+ * 若答案本就是选项文本（非单字母），原样返回。
+ */
+function mapLetterAnswer(answer: string, optionsJson: string | null): string {
+  if (!optionsJson) return answer;
+  let options: string[];
+  try {
+    options = JSON.parse(optionsJson);
+    if (!Array.isArray(options)) return answer;
+  } catch {
+    return answer;
+  }
+
+  const tokens = answer
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const mapped = tokens.map((token) => {
+    if (/^[A-Z]$/.test(token)) {
+      const index = token.charCodeAt(0) - "A".charCodeAt(0);
+      return options[index] ?? token;
+    }
+    return token;
+  });
+  return mapped.join(",");
 }
 
 /** 答案格式校验（宽松：非空即可；判断题严格要求 true/false） */
@@ -109,6 +154,7 @@ export function parseCsv(text: string): CsvParseResult {
     const answerRaw = pickField(record, HEADER_ALIASES.answer);
     const analysisRaw = pickField(record, HEADER_ALIASES.analysis);
     const tagsRaw = pickField(record, HEADER_ALIASES.tags);
+    const bankRaw = pickField(record, HEADER_ALIASES.bank);
 
     // 跳过完全空行（skipEmptyLines 已处理，双保险）
     if (!contentRaw?.trim() && !typeRaw?.trim() && !answerRaw?.trim()) return;
@@ -131,13 +177,17 @@ export function parseCsv(text: string): CsvParseResult {
       return;
     }
 
+    const options = parseOptions(optionsRaw, qType);
+    const answer = mapLetterAnswer(normalizeAnswer(answerRaw ?? "", qType), options);
+
     rows.push({
       q_type: qType,
       content,
-      options: parseOptions(optionsRaw, qType),
-      answer: (answerRaw ?? "").trim(),
+      options,
+      answer,
       analysis: analysisRaw?.trim() ? analysisRaw.trim() : null,
       tags: parseTags(tagsRaw),
+      bank_name: bankRaw?.trim() ? bankRaw.trim() : null,
     });
   });
 
