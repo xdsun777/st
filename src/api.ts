@@ -106,6 +106,10 @@ export function updateFault(questionId: number, isFault: boolean): Promise<void>
   return invoke<void>("update_fault", { questionId, isFault });
 }
 
+export function updateManualResult(questionId: number, manualResult: number): Promise<void> {
+  return invoke<void>("update_manual_result", { questionId, manualResult });
+}
+
 export function updateCollect(questionId: number, isCollect: boolean): Promise<void> {
   return invoke<void>("update_collect", { questionId, isCollect });
 }

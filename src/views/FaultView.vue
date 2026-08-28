@@ -2,7 +2,10 @@
 import { onMounted, ref, watch } from "vue";
 import { getFaultQuestions, updateFault } from "../api";
 import type { Question, QuestionType } from "../types";
+import { useAppStore } from "../stores/app";
 import TagFilter from "../components/TagFilter.vue";
+
+const store = useAppStore();
 
 const TYPE_LABELS: Record<QuestionType, string> = {
   single: "单选",
@@ -51,7 +54,15 @@ onMounted(refresh);
       答错的题目会自动进入这里；移出错题仅清除标记，做题记录保留。
     </p>
 
-    <div class="mb-3"><TagFilter v-model="tagId" /></div>
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <TagFilter v-model="tagId" />
+      <button
+        class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+        @click="store.startPractice({ kind: 'fault', tagId })"
+      >
+        刷这些错题
+      </button>
+    </div>
     <p v-if="errorMsg" class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
       {{ errorMsg }}
     </p>

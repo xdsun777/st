@@ -79,7 +79,7 @@ pub async fn submit_answer(
     })
 }
 
-/// 更新错题标记（填空手动覆写、移出错题均走此接口）。
+/// 更新错题标记（错题本「移出错题」走此接口）。
 /// 仅更新标记，做题记录与 fault_count 完整保留（业务文档 4.5.3）。
 #[tauri::command]
 pub async fn update_fault(
@@ -94,6 +94,66 @@ pub async fn update_fault(
         .execute(pool)
         .await
         .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// 更新手动判分结果（填空覆写、简答手动标记对错，业务文档 4.5.1 / 7.3）。
+/// - 更新该题最新一条做题记录的 manual_result（优先级高于 machine_result）
+/// - 同步该题全部记录的错题标记 is_fault
+/// - 标记为错时，最新记录 fault_count 累加 1
+#[tauri::command]
+pub async fn update_manual_result(
+    pool: State<'_, sqlx::SqlitePool>,
+    question_id: i64,
+    manual_result: i64,
+) -> Result<(), String> {
+    if manual_result != 0 && manual_result != 1 {
+        return Err("手动判分结果只能为 0（错误）或 1（正确）".into());
+    }
+    let pool = sqlite_pool(&pool)?;
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    let latest: Option<(i64,)> = sqlx::query_as(
+        "SELECT id FROM answer_record WHERE question_id = ?1 ORDER BY id DESC LIMIT 1",
+    )
+    .bind(question_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if let Some((record_id,)) = latest {
+        let hist: (i64,) = sqlx::query_as(
+            "SELECT COALESCE(MAX(fault_count), 0) FROM answer_record WHERE question_id = ?1",
+        )
+        .bind(question_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        let is_fault = if manual_result == 0 { 1 } else { 0 };
+        let fault_count = if manual_result == 0 { hist.0 + 1 } else { hist.0 };
+
+        sqlx::query(
+            "UPDATE answer_record SET manual_result = ?1, is_fault = ?2, fault_count = ?3 WHERE id = ?4",
+        )
+        .bind(manual_result)
+        .bind(is_fault)
+        .bind(fault_count)
+        .bind(record_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        // 错题标记为题目级状态：同步该题全部记录
+        sqlx::query("UPDATE answer_record SET is_fault = ?1 WHERE question_id = ?2")
+            .bind(is_fault)
+            .bind(question_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    tx.commit().await.map_err(|e| e.to_string())?;
     Ok(())
 }
 

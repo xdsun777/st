@@ -50,6 +50,7 @@ pub fn run() {
             // 做题记录 / 错题 / 收藏
             commands::record::submit_answer,
             commands::record::update_fault,
+            commands::record::update_manual_result,
             commands::record::update_collect,
             commands::record::get_fault_questions,
             commands::record::get_collect_questions,

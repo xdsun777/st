@@ -2,7 +2,10 @@
 import { onMounted, ref, watch } from "vue";
 import { getCollectQuestions, updateCollect } from "../api";
 import type { Question, QuestionType } from "../types";
+import { useAppStore } from "../stores/app";
 import TagFilter from "../components/TagFilter.vue";
+
+const store = useAppStore();
 
 const TYPE_LABELS: Record<QuestionType, string> = {
   single: "单选",
@@ -50,7 +53,15 @@ onMounted(refresh);
       手动收藏的题目；收藏独立于错题，取消收藏不影响做题记录。
     </p>
 
-    <div class="mb-3"><TagFilter v-model="tagId" /></div>
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <TagFilter v-model="tagId" />
+      <button
+        class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+        @click="store.startPractice({ kind: 'collect', tagId })"
+      >
+        刷这些收藏
+      </button>
+    </div>
     <p v-if="errorMsg" class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
       {{ errorMsg }}
     </p>
