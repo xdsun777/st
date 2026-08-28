@@ -28,6 +28,8 @@ export interface Question {
   create_time: number;
   update_time: number;
   tags: string[];
+  /** 是否已收藏 0/1 */
+  is_collect: number;
 }
 
 /** 单题新增/编辑入参 */

@@ -10,6 +10,7 @@ import {
   loadPracticeSession,
   savePracticeSession,
   submitAnswer,
+  updateCollect,
   updateManualResult,
 } from "../api";
 import type { PracticeMode, PracticeSession, Question, QuestionBank } from "../types";
@@ -229,6 +230,19 @@ async function onOverride(result: number) {
   }
 }
 
+/** 收藏 / 取消收藏当前题目（业务文档 4.6：收藏独立于错题） */
+async function onToggleCollect() {
+  const q = currentQuestion.value;
+  if (!q) return;
+  try {
+    const target = q.is_collect === 1 ? 0 : 1;
+    await updateCollect(q.id, target === 1);
+    q.is_collect = target;
+  } catch (e) {
+    errorMsg.value = String(e);
+  }
+}
+
 onMounted(async () => {
   // 错题本/收藏页跳转来的刷题请求：直接开始（作废旧会话）
   const jumpSource = store.practiceSource;
@@ -404,6 +418,7 @@ onBeforeUnmount(() => {
         :total="questions.length"
         @submitted="onSubmitted"
         @override="onOverride"
+        @toggle-collect="onToggleCollect"
       />
     </template>
   </section>

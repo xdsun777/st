@@ -42,9 +42,9 @@ pub fn split_tags(raw: &str) -> Vec<String> {
     }
 }
 
-/// 从带 tags 聚合列（GROUP_CONCAT）的查询行构造题目。
+/// 从带 tags 聚合列（GROUP_CONCAT）与 is_collect 聚合列的查询行构造题目。
 /// 查询列别名要求：id, bank_id, q_type, content, options, answer, analysis,
-/// create_time, update_time, tags。
+/// create_time, update_time, tags, is_collect。
 pub fn row_to_question(row: &sqlx::sqlite::SqliteRow) -> Result<Question, String> {
     let tags: String = row.try_get("tags").map_err(|e| e.to_string())?;
     let mut question = Question::from(QuestionRow {
@@ -59,6 +59,7 @@ pub fn row_to_question(row: &sqlx::sqlite::SqliteRow) -> Result<Question, String
         update_time: row.try_get("update_time").map_err(|e| e.to_string())?,
     });
     question.tags = split_tags(&tags);
+    question.is_collect = row.try_get("is_collect").map_err(|e| e.to_string())?;
     Ok(question)
 }
 

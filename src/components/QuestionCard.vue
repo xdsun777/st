@@ -16,6 +16,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "submitted", payload: { userAnswer: string | string[]; machineResult: number | null }): void;
   (e: "override", manualResult: number): void;
+  (e: "toggle-collect"): void;
 }>();
 
 const TYPE_LABELS: Record<QuestionType, string> = {
@@ -134,7 +135,20 @@ watch(() => props.question.id, reset);
       <span class="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
         {{ TYPE_LABELS[question.q_type] }}
       </span>
-      <span class="text-sm text-gray-400">{{ index + 1 }} / {{ total }}</span>
+      <div class="flex items-center gap-3">
+        <button
+          class="rounded-full border px-3 py-1 text-xs transition"
+          :class="
+            question.is_collect === 1
+              ? 'border-amber-300 bg-amber-50 text-amber-600'
+              : 'border-gray-200 text-gray-400 hover:border-amber-300 hover:text-amber-500'
+          "
+          @click="emit('toggle-collect')"
+        >
+          {{ question.is_collect === 1 ? "★ 已收藏" : "☆ 收藏" }}
+        </button>
+        <span class="text-sm text-gray-400">{{ index + 1 }} / {{ total }}</span>
+      </div>
     </div>
 
     <h3 class="text-base font-medium leading-relaxed">{{ question.content }}</h3>

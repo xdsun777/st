@@ -222,7 +222,8 @@ pub async fn get_fault_questions(
     let rows = sqlx::query(
         "SELECT q.id, q.bank_id, q.q_type, q.content, q.options, q.answer, q.analysis,
                 q.create_time, q.update_time,
-                COALESCE(GROUP_CONCAT(t.name), '') AS tags
+                COALESCE(GROUP_CONCAT(t.name), '') AS tags,
+                COALESCE((SELECT MAX(is_collect) FROM answer_record WHERE question_id = q.id), 0) AS is_collect
          FROM question q
          LEFT JOIN question_tag qt ON qt.question_id = q.id
          LEFT JOIN tag t ON t.id = qt.tag_id
@@ -252,7 +253,8 @@ pub async fn get_collect_questions(
     let rows = sqlx::query(
         "SELECT q.id, q.bank_id, q.q_type, q.content, q.options, q.answer, q.analysis,
                 q.create_time, q.update_time,
-                COALESCE(GROUP_CONCAT(t.name), '') AS tags
+                COALESCE(GROUP_CONCAT(t.name), '') AS tags,
+                COALESCE((SELECT MAX(is_collect) FROM answer_record WHERE question_id = q.id), 0) AS is_collect
          FROM question q
          LEFT JOIN question_tag qt ON qt.question_id = q.id
          LEFT JOIN tag t ON t.id = qt.tag_id

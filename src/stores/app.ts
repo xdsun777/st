@@ -12,6 +12,15 @@ export interface PracticeSource {
   tagId?: number | null;
 }
 
+/** 全局提示消息 */
+export interface Toast {
+  id: number;
+  message: string;
+  type: "error" | "info";
+}
+
+let toastSeq = 0;
+
 /**
  * 全局应用状态（技术文档 3：Pinia 维护内存状态）。
  */
@@ -24,6 +33,9 @@ export const useAppStore = defineStore("app", () => {
   /** 跨视图跳转：错题本/收藏页发起刷题时设置来源后切换到刷题视图 */
   const practiceSource = ref<PracticeSource | null>(null);
 
+  /** 全局提示消息队列 */
+  const toasts = ref<Toast[]>([]);
+
   function setView(view: ViewKey) {
     currentView.value = view;
   }
@@ -34,5 +46,27 @@ export const useAppStore = defineStore("app", () => {
     currentView.value = "practice";
   }
 
-  return { currentView, session, practiceSource, setView, startPractice };
+  /** 推送全局提示（5 秒后自动消失） */
+  function pushToast(message: string, type: "error" | "info" = "error") {
+    const id = ++toastSeq;
+    toasts.value.push({ id, message, type });
+    setTimeout(() => {
+      toasts.value = toasts.value.filter((t) => t.id !== id);
+    }, 5000);
+  }
+
+  function removeToast(id: number) {
+    toasts.value = toasts.value.filter((t) => t.id !== id);
+  }
+
+  return {
+    currentView,
+    session,
+    practiceSource,
+    toasts,
+    setView,
+    startPractice,
+    pushToast,
+    removeToast,
+  };
 });

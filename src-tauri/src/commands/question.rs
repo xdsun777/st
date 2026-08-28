@@ -22,7 +22,8 @@ pub async fn get_questions(
     let rows = sqlx::query(
         "SELECT q.id, q.bank_id, q.q_type, q.content, q.options, q.answer, q.analysis,
                 q.create_time, q.update_time,
-                COALESCE(GROUP_CONCAT(t.name), '') AS tags
+                COALESCE(GROUP_CONCAT(t.name), '') AS tags,
+                COALESCE((SELECT MAX(is_collect) FROM answer_record WHERE question_id = q.id), 0) AS is_collect
          FROM question q
          LEFT JOIN question_tag qt ON qt.question_id = q.id
          LEFT JOIN tag t ON t.id = qt.tag_id
@@ -47,7 +48,8 @@ pub async fn get_question(pool: State<'_, sqlx::SqlitePool>, question_id: i64) -
     let row = sqlx::query(
         "SELECT q.id, q.bank_id, q.q_type, q.content, q.options, q.answer, q.analysis,
                 q.create_time, q.update_time,
-                COALESCE(GROUP_CONCAT(t.name), '') AS tags
+                COALESCE(GROUP_CONCAT(t.name), '') AS tags,
+                COALESCE((SELECT MAX(is_collect) FROM answer_record WHERE question_id = q.id), 0) AS is_collect
          FROM question q
          LEFT JOIN question_tag qt ON qt.question_id = q.id
          LEFT JOIN tag t ON t.id = qt.tag_id
@@ -102,6 +104,7 @@ pub async fn create_question(
         create_time: now,
         update_time: now,
         tags: clean_tags(&input.tags),
+        is_collect: 0,
     })
 }
 
@@ -153,6 +156,7 @@ pub async fn update_question(
         create_time: 0, // 由查询接口返回真实值；此处仅作为确认
         update_time: now,
         tags: clean_tags(&input.tags),
+        is_collect: 0,
     })
 }
 

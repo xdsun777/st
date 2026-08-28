@@ -33,7 +33,7 @@ pub struct QuestionRow {
     pub update_time: i64,
 }
 
-/// 题目（含标签名列表，返回给前端）
+/// 题目（含标签名列表与收藏状态，返回给前端）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Question {
     pub id: i64,
@@ -46,6 +46,8 @@ pub struct Question {
     pub create_time: i64,
     pub update_time: i64,
     pub tags: Vec<String>,
+    /// 是否已收藏 0/1（聚合自 answer_record）
+    pub is_collect: i64,
 }
 
 impl From<QuestionRow> for Question {
@@ -61,6 +63,7 @@ impl From<QuestionRow> for Question {
             create_time: row.create_time,
             update_time: row.update_time,
             tags: Vec::new(),
+            is_collect: 0,
         }
     }
 }

@@ -65,15 +65,15 @@ const currentView = computed(() => views[app.currentView]);
       class="shrink-0 border-b border-gray-200 bg-white px-4 pb-2 pt-3 md:hidden"
       style="padding-top: max(0.75rem, env(safe-area-inset-top))"
     >
-      <h1 class="text-base font-semibold">个人刷题工具</h1>
-      <p class="text-xs text-gray-400">纯本地 · 无网络 · 无广告</p>
+      <h1 class="text-base font-semibold">再刷一题</h1>
+      <p class="text-xs text-gray-400">每日一语</p>
     </header>
 
     <!-- 桌面端侧边栏 -->
     <aside class="hidden w-56 shrink-0 flex-col border-r border-gray-200 bg-white md:flex">
       <div class="border-b border-gray-100 px-5 py-4">
-        <h1 class="text-lg font-semibold">个人刷题工具</h1>
-        <p class="mt-0.5 text-xs text-gray-400">纯本地 · 无网络 · 无广告</p>
+        <h1 class="text-lg font-semibold">再刷一题</h1>
+        <p class="mt-0.5 text-xs text-gray-400">每日一语</p>
       </div>
       <nav class="flex-1 space-y-1 p-3">
         <button
@@ -118,6 +118,19 @@ const currentView = computed(() => views[app.currentView]);
     <main class="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 md:pb-6">
       <component :is="currentView" />
     </main>
+
+    <!-- 全局错误/信息提示 -->
+    <div class="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-4">
+      <div
+        v-for="toast in app.toasts"
+        :key="toast.id"
+        class="pointer-events-auto w-full max-w-md rounded-lg px-4 py-2.5 text-sm text-white shadow-lg"
+        :class="toast.type === 'error' ? 'bg-red-600' : 'bg-gray-800'"
+        @click="app.removeToast(toast.id)"
+      >
+        {{ toast.message }}
+      </div>
+    </div>
 
     <!-- 移动端底部 Tab 导航 -->
     <nav
