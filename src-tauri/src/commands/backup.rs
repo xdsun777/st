@@ -4,7 +4,8 @@
 //! - 恢复：解析校验备份 JSON → 事务内清空全部业务表并写入备份数据
 //! - 异常捕获：文件损坏、格式错误时返回错误，原有数据保持不变（先解析后清库）
 
-use tauri::State;
+use tauri::{AppHandle, State};
+use tauri_plugin_fs::{FilePath, FsExt};
 
 use crate::common::{now_ms, sqlite_pool};
 use crate::models::{
@@ -14,35 +15,45 @@ use crate::models::{
 
 const BACKUP_VERSION: u32 = 1;
 
-/// 导出全量备份到指定路径（.qpbackup 自定义格式，不与 CSV 互通）
+/// 导出全量备份到指定路径（.qpbackup 自定义格式，不与 CSV 互通）。
+/// 使用 tauri-plugin-fs 写入：桌面为普通文件路径，Android 上为
+/// ACTION_CREATE_DOCUMENT 返回的 `content://` URI，不能直接走 `std::fs`。
 #[tauri::command]
 pub async fn export_backup(
+    app: AppHandle,
     pool: State<'_, sqlx::SqlitePool>,
-    path: String,
+    path: FilePath,
 ) -> Result<BackupResult, String> {
-    if path.trim().is_empty() {
+    let path_str = path.to_string();
+    if path_str.trim().is_empty() {
         return Err("备份文件路径不能为空".into());
     }
     let pool = sqlite_pool(&pool)?;
     let data = read_all(pool).await?;
     let json = serde_json::to_vec_pretty(&data).map_err(|e| format!("备份数据序列化失败：{e}"))?;
-    std::fs::write(&path, json).map_err(|e| format!("备份文件写入失败（{path}）：{e}"))?;
-    Ok(result_of(&path, &data))
+    write_file(&app, path, &json).map_err(|e| format!("备份文件写入失败（{path_str}）：{e}"))?;
+    Ok(result_of(&path_str, &data))
 }
 
 /// 从备份文件恢复：覆盖本地全部数据（前端已做风险二次确认）。
 /// 解析失败或写入失败均不会破坏原有数据。
 #[tauri::command]
 pub async fn import_backup(
+    app: AppHandle,
     pool: State<'_, sqlx::SqlitePool>,
-    path: String,
+    path: FilePath,
 ) -> Result<BackupResult, String> {
-    if path.trim().is_empty() {
+    let path_str = path.to_string();
+    if path_str.trim().is_empty() {
         return Err("备份文件路径不能为空".into());
     }
 
-    // 1. 先完整读取并解析校验；失败则直接返回，不触碰原库
-    let raw = std::fs::read(&path).map_err(|e| format!("备份文件读取失败（{path}）：{e}"))?;
+    // 1. 先完整读取并解析校验；失败则直接返回，不触碰原库。
+    //    Android 文件选择器返回的是 content:// URI，必须经 tauri-plugin-fs 读取。
+    let raw = app
+        .fs()
+        .read(path)
+        .map_err(|e| format!("备份文件读取失败（{path_str}）：{e}"))?;
     let data: BackupData = serde_json::from_slice(&raw)
         .map_err(|e| format!("备份文件解析失败（格式错误或已损坏）：{e}"))?;
     if data.version != BACKUP_VERSION {
@@ -142,7 +153,18 @@ pub async fn import_backup(
     // 3. 全部成功才提交；任一步失败自动回滚，原库保持完整
     tx.commit().await.map_err(|e| e.to_string())?;
 
-    Ok(result_of(&path, &data))
+    Ok(result_of(&path_str, &data))
+}
+
+/// 经 tauri-plugin-fs 写文件：桌面写入普通路径；Android 写入 content:// URI。
+fn write_file(app: &AppHandle, path: FilePath, data: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+
+    let mut opts = tauri_plugin_fs::OpenOptions::new();
+    opts.write(true).create(true).truncate(true);
+    let mut file = app.fs().open(path, opts)?;
+    file.write_all(data)?;
+    file.flush()
 }
 
 /// 读取全部业务表组装备份数据
