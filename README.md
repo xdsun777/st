@@ -1,14 +1,14 @@
 # 个人刷题工具（st）
 
-个人自用的本地离线刷题 App，支持自定义 CSV 题库导入、五种题型刷题、错题本、收藏、统计与备份恢复。**无账号、无网络、无广告**，所有数据保存在本机。
+本地离线刷题 App，支持自定义 CSV 题库导入、五种题型刷题、错题本、收藏、统计与备份恢复，所有数据保存在本机。
 
 - 桌面端：Windows `.exe` / Linux `AppImage`（Tauri 2）
-- 移动端：Android `.apk`（自用，不上应用商店）
+- 移动端：Android `.apk`
 
 ## 功能特性
 
 | 模块 | 功能 |
-|---|---|
+| --- | --- |
 | 题库管理 | CSV 批量导入（字段校验 + 错误行提示）、题库集增删改、单题增删改、标签管理与筛选 |
 | 刷题 | 顺序 / 随机模式；单选、多选、判断、填空、简答五种题型；上一题/下一题；中途退出自动保存进度、再次进入可续做 |
 | 判分 | 单选/多选/判断/填空机器判分；填空支持手动覆写；简答手动标记对错 |
@@ -90,7 +90,7 @@ adb install src-tauri/gen/android/app/build/outputs/apk/universal/release/app-un
 ### 字段说明
 
 | 字段 | 是否必填 | 说明 |
-|---|---|---|
+| --- | --- | --- |
 | 题目类型 | **必填** | `single`（单选）/ `multi`（多选）/ `judge`（判断）/ `essay`（简答）/ `fill`（填空） |
 | 题干 | **必填** | 题目文本 |
 | 选项 | 否 | 单选/多选使用，**英文逗号分隔**（含逗号时用 CSV 引号包裹），如 `"MySQL,Redis,MongoDB"`；简答/填空留空 |
@@ -122,7 +122,7 @@ essay,请简述什么是 RESTful API？, ,RESTful API 是一种基于 HTTP 协�
 ## 题型与判分规则
 
 | 题型 | 判分规则 |
-|---|---|
+| --- | --- |
 | 单选 single | 机器判分，所选选项文本与答案完全一致（去除首尾空格） |
 | 多选 multi | 机器判分，选项集合**必须完全匹配**，多选、少选、错选均判错 |
 | 判断 judge | 机器判分，`true` / `false`（忽略大小写与首尾空格） |
@@ -162,7 +162,3 @@ cargo check --target aarch64-linux-android
 ### Android 工程模板缺失 tauri.settings.gradle / tauri.build.gradle.kts
 
 tauri-cli 2.6.x 的 `android init` 模板偶发引用旧格式文件。若 `./gradlew` 报找不到这两个文件，删除 `settings.gradle` 中的 `apply from: 'tauri.settings.gradle'` 与 `app/build.gradle.kts` 末尾的 `apply(from = "tauri.build.gradle.kts")` 即可（新模板已由 buildSrc 插件接管 Rust 构建）。
-
-## 许可与说明
-
-本项目为个人自用工具；不含任何网络请求、埋点或上报代码。
