@@ -2,5 +2,10 @@
     <!-- Base application theme. -->
     <style name="Theme.st" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
-    </style>
+
+        <!-- 核心：将状态栏颜色设置为透明 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+
+        <!-- 重要：让状态栏图标（时间、电量）颜色变深，以便在浅色内容上可见 -->
+        <item name="android:windowLightStatusBar">true</item>    </style>
 </resources>
