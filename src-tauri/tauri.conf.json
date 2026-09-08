@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "个人刷题工具",
+        "title": "再刷一题",
         "width": 1100,
         "height": 720,
         "minWidth": 900,
