@@ -12,7 +12,8 @@
   "app": {
     "windows": [
       {
-        "title": "再刷一题",
+        "decorations": false,
+        "title": "",
         "width": 1100,
         "height": 720,
         "minWidth": 900,

@@ -7,6 +7,7 @@ import FaultView from "./views/FaultView.vue";
 import CollectView from "./views/CollectView.vue";
 import StatsView from "./views/StatsView.vue";
 import BackupView from "./views/BackupView.vue";
+import TitleBar from "./components/TitleBar.vue";
 
 const app = useAppStore();
 
@@ -59,7 +60,11 @@ const currentView = computed(() => views[app.currentView]);
 </script>
 
 <template>
-  <div class="flex h-full flex-col bg-gray-50 text-gray-900 md:flex-row md:overflow-hidden">
+  <div class="flex h-full flex-col bg-gray-50 text-gray-900">
+    <!-- 桌面端自定义标题栏（移动端隐藏） -->
+    <TitleBar />
+
+    <div class="flex min-h-0 flex-1 flex-col md:flex-row md:overflow-hidden">
     <!-- 移动端顶部标题栏 -->
     <header
       class="shrink-0 border-b border-gray-200 bg-white px-4 pb-2 pt-3 md:hidden"
@@ -118,6 +123,7 @@ const currentView = computed(() => views[app.currentView]);
     <main class="flex-1 overflow-y-auto p-4 pb-24 sm:p-6 md:pb-6">
       <component :is="currentView" />
     </main>
+    </div>
 
     <!-- 全局错误/信息提示 -->
     <div class="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-4">
