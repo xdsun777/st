@@ -5,6 +5,7 @@ import BankView from "./views/BankView.vue";
 import PracticeView from "./views/PracticeView.vue";
 import MineView from "./views/MineView.vue";
 import TitleBar from "./components/TitleBar.vue";
+import DailyQuote from "./components/DailyQuote.vue";
 
 const app = useAppStore();
 
@@ -112,14 +113,14 @@ const currentView = computed(() => views[app.currentView]);
       style="padding-top: max(0.75rem, env(safe-area-inset-top))"
     >
       <h1 class="text-base font-semibold">再刷一题</h1>
-      <p class="text-xs text-gray-400">每日一语</p>
+      <DailyQuote />
     </header>
 
     <!-- 桌面端侧边栏（分组） -->
     <aside class="hidden w-56 shrink-0 flex-col border-r border-gray-200 bg-white md:flex">
       <div class="border-b border-gray-100 px-5 py-4">
         <h1 class="text-lg font-semibold">再刷一题</h1>
-        <p class="mt-0.5 text-xs text-gray-400">每日一语</p>
+        <DailyQuote class="mt-0.5" />
       </div>
       <nav class="flex-1 space-y-4 overflow-y-auto p-3">
         <div v-for="group in navGroups" :key="group.key">
