@@ -1,7 +1,7 @@
 [package]
 name = "st"
 version = "0.1.0"
-description = "刷题工具：CSV导入题库、刷题、错题收藏、统计、备份恢复（纯本地离线）"
+description = "再刷一题：CSV导入题库、刷题、错题收藏、统计、备份恢复（纯本地离线）"
 authors = ["charm"]
 edition = "2021"
 
