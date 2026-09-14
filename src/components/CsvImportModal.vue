@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { readTextFile } from "@tauri-apps/plugin-fs";
+import { readFile, readTextFile } from "@tauri-apps/plugin-fs";
 import { batchInsertQuestions } from "../api";
-import { parseCsv } from "../utils/csv";
+import { parseCsv, parseExcel } from "../utils/csv";
 import type { CsvParseError } from "../utils/csv";
 import type { NewQuestion } from "../types";
 
 /**
- * CSV 导入弹窗（技术文档 5.1）：
- * 选择 .csv 文件 → 读取文本 → PapaParse 解析校验 → 错误行展示 → 确认导入 Rust 批量写入。
+ * 题库导入弹窗（技术文档 5.1）：
+ * 选择 .csv / .xlsx / .xls 文件 → 按类型读取解析校验 → 错误行展示 → 确认导入 Rust 批量写入。
+ * Excel 字段规范与 CSV 完全一致。
  */
 const props = defineProps<{
   open: boolean;
@@ -44,14 +45,21 @@ async function chooseFile() {
   importResult.value = "";
   const selected = await openDialog({
     multiple: false,
-    filters: [{ name: "CSV 文件", extensions: ["csv"] }],
+    filters: [{ name: "题库文件（CSV / Excel）", extensions: ["csv", "xlsx", "xls"] }],
   });
   if (!selected || typeof selected !== "string") return;
 
   fileName.value = selected;
   try {
-    const text = await readTextFile(selected);
-    const result = parseCsv(text);
+    const ext = selected.split(".").pop()?.toLowerCase();
+    let result;
+    if (ext === "csv") {
+      result = parseCsv(await readTextFile(selected));
+    } else if (ext === "xlsx" || ext === "xls") {
+      result = parseExcel(await readFile(selected));
+    } else {
+      throw new Error(`不支持的文件类型：.${ext}（仅支持 .csv / .xlsx / .xls）`);
+    }
     parsedRows.value = result.rows;
     errors.value = result.errors;
     validCount.value = result.rows.length;
@@ -98,7 +106,7 @@ function reset() {
   >
     <div class="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl">
       <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        <h3 class="text-base font-semibold">CSV 导入题库</h3>
+        <h3 class="text-base font-semibold">题库导入</h3>
         <button class="text-gray-400 hover:text-gray-600" @click="emit('close')">关闭</button>
       </div>
 
@@ -106,10 +114,10 @@ function reset() {
         <div class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
           <template v-if="bankName">
             默认题库集：<span class="font-medium text-gray-700">{{ bankName }}</span>
-            <br />CSV 含「所属题库集」列时，将按该列自动归入/创建题库集。
+            <br />文件含「所属题库集」列时，将按该列自动归入/创建题库集。
           </template>
           <template v-else>
-            未选择题库集：将使用 CSV 的「所属题库集」列自动创建/归入题库集；
+            未选择题库集：将使用文件的「所属题库集」列自动创建/归入题库集；
             <br />无该列的行将跳过。
           </template>
           <br />字段规范：题目类型(必填)、题干(必填)、正确答案(必填)、选项/解析/标签/所属题库集(可选)。
@@ -121,10 +129,10 @@ function reset() {
             class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
             @click="chooseFile"
           >
-            选择 CSV 文件
+            选择文件
           </button>
           <span class="min-w-0 truncate text-sm text-gray-500">
-            {{ fileName || "未选择文件（仅支持 .csv）" }}
+            {{ fileName || "未选择文件（支持 .csv / .xlsx / .xls）" }}
           </span>
         </div>
 

@@ -183,7 +183,7 @@ onMounted(async () => {
       <div>
         <h2 class="text-xl font-semibold">题库管理</h2>
         <p class="mt-1 text-sm text-gray-500">
-          题库集、题目、标签与 CSV 导入。删除题库集将一并删除其中所有题目。
+          题库集、题目、标签与题库文件导入。删除题库集将一并删除其中所有题目。
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -203,7 +203,7 @@ onMounted(async () => {
           class="shrink-0 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50"
           @click="csvImportOpen = true"
         >
-          导入 CSV
+          导入题库
         </button>
         <button
           class="shrink-0 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50"
@@ -223,7 +223,7 @@ onMounted(async () => {
       v-if="banks.length === 0"
       class="rounded-xl border-2 border-dashed border-gray-200 bg-white p-10 text-center text-sm text-gray-400"
     >
-      暂无题库集，先在上方新建一个，或通过 CSV 导入题目。
+      暂无题库集，先在上方新建一个，或通过题库文件导入题目。
     </div>
     <ul v-else class="mb-4 flex flex-wrap gap-2">
       <li
@@ -284,7 +284,7 @@ onMounted(async () => {
         v-else-if="questions.length === 0"
         class="rounded-xl border-2 border-dashed border-gray-200 bg-white p-10 text-center text-sm text-gray-400"
       >
-        「{{ selectedBank.name }}」暂无题目，点击右上角新增题目或导入 CSV。
+        「{{ selectedBank.name }}」暂无题目，点击右上角新增题目或导入题库。
       </div>
       <ul v-else class="space-y-2">
         <li

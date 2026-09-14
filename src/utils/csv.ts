@@ -1,14 +1,15 @@
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import type { NewQuestion, QuestionType } from "../types";
 
 /**
- * CSV 导入解析与字段校验（技术文档 5.1 / 6.1）。
+ * 题库文件导入解析与字段校验（CSV / Excel，技术文档 5.1 / 6.1）。
  *
  * 字段规范（表头，业务文档 4.2）：
  * 题目ID(否) | 题目类型(是) | 题干(是) | 选项(否) | 正确答案(是) | 解析(否) | 标签(否) | 所属题库集(否)
  *
  * 校验规则：
- * 1. 仅支持 .csv（文件选择处拦截）
+ * 1. 支持 .csv / .xlsx / .xls（文件选择处拦截）
  * 2. 题干为空、类型非法、答案格式错误 → 跳过该行，输出错误行号提示
  * 3. 重复题干由 Rust 层 batch_insert_questions 处理（保留原题）
  */
@@ -132,21 +133,19 @@ function validateAnswer(raw: string | undefined, qType: QuestionType): string | 
 }
 
 /**
- * 解析 CSV 文本。返回合法题目行与错误行列表。
- * @param text CSV 原始文本
+ * 对"表头 + 数据行"结构进行逐行校验（CSV 与 Excel 共用）。
+ * @param records 数据行对象数组（键为表头，值为字符串）
+ * @param startRow 第一条数据在文件中的行号（含表头；CSV 与 Excel 均为 2）
  */
-export function parseCsv(text: string): CsvParseResult {
-  const result = Papa.parse<Record<string, string>>(text, {
-    header: true,
-    skipEmptyLines: "greedy",
-  });
-
+export function validateRows(
+  records: Record<string, string>[],
+  startRow: number,
+): CsvParseResult {
   const rows: NewQuestion[] = [];
   const errors: CsvParseError[] = [];
 
-  result.data.forEach((record, index) => {
-    // 数据行号 = 表头 1 行 + 数据行偏移（PapaParse 不返回表头）
-    const rowNo = index + 2;
+  records.forEach((record, index) => {
+    const rowNo = startRow + index;
 
     const typeRaw = pickField(record, HEADER_ALIASES.type);
     const contentRaw = pickField(record, HEADER_ALIASES.content);
@@ -156,7 +155,7 @@ export function parseCsv(text: string): CsvParseResult {
     const tagsRaw = pickField(record, HEADER_ALIASES.tags);
     const bankRaw = pickField(record, HEADER_ALIASES.bank);
 
-    // 跳过完全空行（skipEmptyLines 已处理，双保险）
+    // 跳过完全空行
     if (!contentRaw?.trim() && !typeRaw?.trim() && !answerRaw?.trim()) return;
 
     const qType = parseType(typeRaw);
@@ -192,4 +191,45 @@ export function parseCsv(text: string): CsvParseResult {
   });
 
   return { rows, errors };
+}
+
+/**
+ * 解析 CSV 文本。返回合法题目行与错误行列表。
+ * @param text CSV 原始文本
+ */
+export function parseCsv(text: string): CsvParseResult {
+  const result = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: "greedy",
+  });
+  // 数据行号 = 表头 1 行 + 数据行偏移（PapaParse 不返回表头）
+  return validateRows(result.data, 2);
+}
+
+/**
+ * 解析 Excel 文件（.xlsx / .xls，SheetJS）。
+ * 读取第一个工作表，第一行为表头；字段规范与 CSV 完全一致。
+ * @param data Excel 文件二进制内容
+ */
+export function parseExcel(data: Uint8Array): CsvParseResult {
+  // SheetJS 的 type:"array" 需要 ArrayBuffer
+  const buffer = data.buffer.slice(
+    data.byteOffset,
+    data.byteOffset + data.byteLength,
+  ) as ArrayBuffer;
+
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!firstSheet) {
+    return { rows: [], errors: [{ row: 1, message: "工作簿中没有工作表" }] };
+  }
+
+  // raw:false → 单元格值统一为格式化字符串（数字也转文本），与 CSV 处理一致
+  const records = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet, {
+    defval: "",
+    raw: false,
+  });
+
+  // 数据行号 = 表头 1 行 + 数据行偏移（sheet_to_json 不返回表头）
+  return validateRows(records, 2);
 }
