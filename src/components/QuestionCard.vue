@@ -43,6 +43,12 @@ const options = computed<string[]>(() => {
   }
 });
 
+/** 刷题进度（0-100），用于顶部细进度条，替代「第 N/M 题」数字 */
+const progress = computed(() => {
+  if (props.total <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round(((props.index + 1) / props.total) * 100)));
+});
+
 // 作答状态
 const singleSelected = ref("");
 const multiSelected = ref<string[]>([]);
@@ -139,6 +145,14 @@ watch(() => props.question.id, reset);
 
 <template>
   <div class="rounded-xl border border-gray-200 bg-white p-5 sm:p-6">
+    <!-- 顶部细进度条（替代「第 N/M 题」数字，弱化完成压力） -->
+    <div class="mb-4 h-1 w-full overflow-hidden rounded-full bg-gray-100">
+      <div
+        class="h-full rounded-full bg-blue-500 transition-all duration-300"
+        :style="{ width: `${progress}%` }"
+      ></div>
+    </div>
+
     <div class="mb-4 flex items-center justify-between gap-3">
       <span class="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
         {{ TYPE_LABELS[question.q_type] }}
@@ -155,7 +169,6 @@ watch(() => props.question.id, reset);
         >
           {{ question.is_collect === 1 ? "★ 已收藏" : "☆ 收藏" }}
         </button>
-        <span class="text-sm text-gray-400">{{ index + 1 }} / {{ total }}</span>
       </div>
     </div>
 
