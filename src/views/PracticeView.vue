@@ -22,6 +22,7 @@ import { useAppStore } from "../stores/app";
 import { analyzeMistakeJs, judgeEssayJs } from "../utils/ai";
 import TagFilter from "../components/TagFilter.vue";
 import QuestionCard from "../components/QuestionCard.vue";
+import SelectField from "../components/SelectField.vue";
 
 /** 会话筛选信息（存于 practice_session.tag_filter 的 JSON） */
 interface SessionFilter {
@@ -68,6 +69,12 @@ let encourageTimer: ReturnType<typeof setTimeout> | null = null;
 // setup 表单
 const formBankId = ref<number | null>(null);
 const formTagId = ref<number | null>(null);
+
+/** 题库集下拉选项（含「全部题库集」） */
+const bankOptions = computed(() => [
+  { value: null, label: "全部题库集" },
+  ...banks.value.map((b) => ({ value: b.id, label: `${b.name}（${b.question_count} 题）` })),
+]);
 
 const currentQuestion = computed(() => questions.value[currentIndex.value] ?? null);
 const isFirst = computed(() => currentIndex.value <= 0);
@@ -527,15 +534,7 @@ async function handleStreak(correct: boolean) {
       <div class="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
         <div>
           <label class="mb-1 block text-xs text-gray-500">题库集（不选则刷全部）</label>
-          <select
-            v-model="formBankId"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 sm:w-72"
-          >
-            <option :value="null">全部题库集</option>
-            <option v-for="bank in banks" :key="bank.id" :value="bank.id">
-              {{ bank.name }}（{{ bank.question_count }} 题）
-            </option>
-          </select>
+          <SelectField v-model="formBankId" :options="bankOptions" class="sm:w-72" />
         </div>
 
         <div>

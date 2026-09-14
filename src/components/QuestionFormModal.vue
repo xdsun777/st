@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref, watch } from "vue";
 import { createQuestion, listTags, updateQuestion } from "../api";
 import type { Question, QuestionInput, QuestionType, Tag } from "../types";
+import SelectField from "./SelectField.vue";
 
 /**
  * 单题新增/编辑弹窗（业务文档 4.2 / 5.1 单题 CRUD）。
@@ -168,14 +169,7 @@ onMounted(loadTags);
       <div class="flex-1 space-y-3 overflow-y-auto px-5 py-4">
         <div>
           <label class="mb-1 block text-xs text-gray-500">题型</label>
-          <select
-            v-model="form.q_type"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400"
-          >
-            <option v-for="opt in TYPE_OPTIONS" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
+          <SelectField v-model="form.q_type" :options="TYPE_OPTIONS" />
         </div>
 
         <div>
