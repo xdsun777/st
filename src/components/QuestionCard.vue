@@ -11,6 +11,12 @@ const props = defineProps<{
   question: Question;
   index: number;
   total: number;
+  /** AI 判题结果（essay；null 表示无） */
+  aiJudgeResult: { correct: number; reason: string } | null;
+  /** AI 判题中 */
+  aiJudging: boolean;
+  /** AI 错题解析文本（答错后异步生成；null 表示无） */
+  aiAnalysisText: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -53,9 +59,11 @@ const isJudge = computed(() => props.question.q_type === "judge");
 const isFill = computed(() => props.question.q_type === "fill");
 const isEssay = computed(() => props.question.q_type === "essay");
 
-const finalResult = computed(() =>
-  overriddenResult.value !== null ? overriddenResult.value : machineResult.value,
-);
+const finalResult = computed(() => {
+  if (overriddenResult.value !== null) return overriddenResult.value;
+  if (props.aiJudgeResult) return props.aiJudgeResult.correct;
+  return machineResult.value;
+});
 const displayCorrect = computed(() =>
   finalResult.value === null ? null : finalResult.value === 1,
 );
@@ -222,14 +230,31 @@ watch(() => props.question.id, reset);
       <!-- 提交后：结果与解析 -->
       <div v-else class="space-y-3">
         <div
-          v-if="displayCorrect !== null"
+          v-if="isEssay && aiJudging"
+          class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500"
+        >
+          AI 判题中…
+        </div>
+        <div
+          v-else-if="displayCorrect !== null"
           class="rounded-lg px-3 py-2 text-sm font-medium"
           :class="displayCorrect ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'"
         >
           {{ displayCorrect ? "回答正确" : "回答错误" }}
+          <span v-if="isEssay && aiJudgeResult" class="ml-1 text-xs font-normal opacity-70">
+            （AI 判题）
+          </span>
         </div>
         <div v-else class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
           简答题无机器判分，请手动标记对错。
+        </div>
+
+        <div
+          v-if="isEssay && aiJudgeResult?.reason"
+          class="rounded-lg bg-blue-50/60 px-3 py-2 text-sm"
+        >
+          <span class="text-gray-500">AI 判题理由：</span>
+          <span>{{ aiJudgeResult.reason }}</span>
         </div>
 
         <div class="rounded-lg bg-gray-50 px-3 py-2 text-sm">
@@ -240,6 +265,14 @@ watch(() => props.question.id, reset);
         <div v-if="question.analysis" class="rounded-lg bg-blue-50/60 px-3 py-2 text-sm">
           <span class="text-gray-500">解析：</span>
           <span>{{ question.analysis }}</span>
+        </div>
+
+        <div
+          v-if="displayCorrect === false && aiAnalysisText"
+          class="rounded-lg border border-blue-200 bg-blue-50/40 px-3 py-2 text-sm"
+        >
+          <div class="mb-0.5 text-xs font-medium text-blue-600">AI 错题解析（仅供参考）</div>
+          <div class="whitespace-pre-line">{{ aiAnalysisText }}</div>
         </div>
 
         <!-- 填空覆写 / 简答手动标记 -->

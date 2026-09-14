@@ -2,19 +2,24 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   clearPracticeSession,
+  updateAiResult,
+  getAiConfig,
   getBanks,
   getCollectQuestions,
   getFaultQuestions,
   getQuestion,
   getQuestions,
+  getSetting,
   loadPracticeSession,
   savePracticeSession,
+  setSetting,
   submitAnswer,
   updateCollect,
   updateManualResult,
 } from "../api";
 import type { PracticeMode, PracticeSession, Question, QuestionBank } from "../types";
 import { useAppStore } from "../stores/app";
+import { analyzeMistakeJs, judgeEssayJs } from "../utils/ai";
 import TagFilter from "../components/TagFilter.vue";
 import QuestionCard from "../components/QuestionCard.vue";
 
@@ -39,6 +44,26 @@ const source = ref<SessionFilter | null>(null);
 const busy = ref(false);
 const errorMsg = ref("");
 const pendingRestore = ref<{ session: PracticeSession; filter: SessionFilter } | null>(null);
+
+// AI 状态（essay 判题 / 错题解析）
+const aiJudgeEnabled = ref(false);
+const aiAnalysisEnabled = ref(false);
+const aiJudging = ref(false);
+const aiJudgeResult = ref<{ correct: number; reason: string } | null>(null);
+const aiAnalysisText = ref<string | null>(null);
+/** 当前题提交的用户作答（手动标错时用于触发解析） */
+const currentUserAnswer = ref("");
+
+// 会话级熔断：连续失败 3 次暂停本次会话 AI 功能（业务文档 6.6）
+const aiFailCount = ref(0);
+const aiPaused = ref(false);
+
+// 轻量激励
+const encourageEnabled = ref(true);
+const encourageMsg = ref("");
+const streakDays = ref(0);
+const streakCorrectCount = ref(0);
+let encourageTimer: ReturnType<typeof setTimeout> | null = null;
 
 // setup 表单
 const formBankId = ref<number | null>(null);
@@ -114,6 +139,8 @@ async function startPractice(filter: SessionFilter) {
     questions.value = list;
     currentIndex.value = 0;
     mode.value = "practice";
+    store.immersiveMode = true;
+    resetAiBreaker();
     await saveSession();
   } catch (e) {
     errorMsg.value = String(e);
@@ -163,6 +190,8 @@ async function resumePractice() {
     practiceMode.value = (session.practice_mode as PracticeMode) ?? "order";
     currentIndex.value = Math.max(0, Math.min(session.current_index, restored.length - 1));
     mode.value = "practice";
+    store.immersiveMode = true;
+    resetAiBreaker();
     pendingRestore.value = null;
   } catch (e) {
     errorMsg.value = String(e);
@@ -184,34 +213,87 @@ async function discardSession() {
 /** 退出刷题（保留会话进度） */
 function exitPractice() {
   mode.value = "setup";
+  store.immersiveMode = false;
   loadBanks();
 }
 
 async function handlePrev() {
   if (isFirst.value) return;
   currentIndex.value -= 1;
+  resetAiState();
   await saveSession();
 }
 
 async function handleNext() {
   if (isLast.value) return;
   currentIndex.value += 1;
+  resetAiState();
   await saveSession();
 }
 
-/** 提交作答：写入做题记录（essay 无机器判分） */
+/** 提交作答：写入做题记录；essay 触发 AI 判题；判错触发 AI 解析；累计激励 */
 async function onSubmitted(payload: { userAnswer: string | string[]; machineResult: number | null }) {
   const q = currentQuestion.value;
   if (!q) return;
+  const userAnswer = Array.isArray(payload.userAnswer)
+    ? payload.userAnswer.join(",")
+    : payload.userAnswer;
+  currentUserAnswer.value = userAnswer;
   try {
-    await submitAnswer({
+    const record = await submitAnswer({
       question_id: q.id,
-      user_answer: Array.isArray(payload.userAnswer)
-        ? payload.userAnswer.join(",")
-        : payload.userAnswer,
+      user_answer: userAnswer,
       machine_result: payload.machineResult,
       manual_result: null,
     });
+
+    // essay：AI 判题（可选，熔断后跳过）
+    if (q.q_type === "essay" && aiJudgeEnabled.value && !aiPaused.value) {
+      aiJudging.value = true;
+      try {
+        aiJudgeResult.value = await judgeEssayJs({
+          content: q.content,
+          answer: q.answer,
+          userAnswer,
+        });
+        recordAiSuccess();
+        // 写回数据库：同步统计与错题本（失败不影响前端展示）
+        updateAiResult(record.id, aiJudgeResult.value.correct).catch(() => {});
+      } catch (e) {
+        recordAiFailure();
+        errorMsg.value = `${String(e)}（请手动标记对错）`;
+      } finally {
+        aiJudging.value = false;
+      }
+    }
+
+    // 最终判错：AI 错题解析（可选，异步）
+    const finalCorrect =
+      payload.machineResult === null
+        ? aiJudgeResult.value?.correct ?? null
+        : payload.machineResult;
+    if (finalCorrect === 0 && aiAnalysisEnabled.value && !aiPaused.value) {
+      analyzeMistakeJs({
+        questionId: q.id,
+        content: q.content,
+        answer: q.answer,
+        userAnswer,
+        analysis: q.analysis ?? undefined,
+      })
+        .then((text) => {
+          aiAnalysisText.value = text;
+          recordAiSuccess();
+        })
+        .catch(() => {
+          // 静默降级，但计入熔断
+          recordAiFailure();
+        });
+    }
+
+    // 轻量激励：连续答对计数 + 文案
+    const correct = finalCorrect === 1;
+    await handleStreak(correct);
+
     await saveSession();
   } catch (e) {
     errorMsg.value = String(e);
@@ -224,6 +306,23 @@ async function onOverride(result: number) {
   if (!q) return;
   try {
     await updateManualResult(q.id, result);
+    // 手动标错 → 触发 AI 错题解析（业务文档 6.4：以最终结果为准）
+    if (result === 0 && aiAnalysisEnabled.value && !aiPaused.value && currentUserAnswer.value) {
+      analyzeMistakeJs({
+        questionId: q.id,
+        content: q.content,
+        answer: q.answer,
+        userAnswer: currentUserAnswer.value,
+        analysis: q.analysis ?? undefined,
+      })
+        .then((text) => {
+          aiAnalysisText.value = text;
+          recordAiSuccess();
+        })
+        .catch(() => {
+          recordAiFailure();
+        });
+    }
     await saveSession();
   } catch (e) {
     errorMsg.value = String(e);
@@ -260,6 +359,7 @@ onMounted(async () => {
   }
 
   await loadBanks();
+  await loadAiAndEncourageConfig();
   try {
     const session = await loadPracticeSession();
     if (session) {
@@ -276,7 +376,91 @@ onBeforeUnmount(() => {
   if (mode.value === "practice") {
     void saveSession();
   }
+  if (encourageTimer) clearTimeout(encourageTimer);
 });
+
+/** 读取 AI 开关与激励开关 */
+async function loadAiAndEncourageConfig() {
+  try {
+    const cfg = await getAiConfig();
+    aiJudgeEnabled.value = cfg.judge_enabled;
+    aiAnalysisEnabled.value = cfg.analysis_enabled;
+  } catch {
+    // 未配置视为关闭
+  }
+  try {
+    encourageEnabled.value = (await getSetting("encourage_enabled")) !== "0";
+  } catch {
+    encourageEnabled.value = true;
+  }
+  try {
+    streakDays.value = Number((await getSetting("streak_days")) ?? 0);
+  } catch {
+    streakDays.value = 0;
+  }
+}
+
+/** 重置当前题的 AI 状态 */
+function resetAiState() {
+  aiJudging.value = false;
+  aiJudgeResult.value = null;
+  aiAnalysisText.value = null;
+}
+
+/** 重置会话级熔断（新会话开始时调用） */
+function resetAiBreaker() {
+  aiFailCount.value = 0;
+  aiPaused.value = false;
+}
+
+/** AI 调用失败计数；连续失败 3 次暂停本次会话 AI 功能 */
+function recordAiFailure() {
+  if (aiPaused.value) return;
+  aiFailCount.value += 1;
+  if (aiFailCount.value >= 3) {
+    aiPaused.value = true;
+  }
+}
+
+/** AI 调用成功，重置连续失败计数 */
+function recordAiSuccess() {
+  aiFailCount.value = 0;
+}
+
+const ENCOURAGE_WORDS = ["再刷一题", "状态不错", "手感来了", "继续保持", "渐入佳境"];
+
+/** 轻量激励：连续答对计数与文案；更新本地连续刷题天数 */
+async function handleStreak(correct: boolean) {
+  if (correct) {
+    streakCorrectCount.value += 1;
+    if (encourageEnabled.value && streakCorrectCount.value % 5 === 0) {
+      encourageMsg.value =
+        ENCOURAGE_WORDS[Math.floor(Math.random() * ENCOURAGE_WORDS.length)];
+      if (encourageTimer) clearTimeout(encourageTimer);
+      encourageTimer = setTimeout(() => {
+        encourageMsg.value = "";
+      }, 1500);
+    }
+  } else {
+    streakCorrectCount.value = 0;
+  }
+  // 更新连续刷题天数（本地）
+  try {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const last = (await getSetting("last_practice_date")) ?? "";
+    if (last !== todayStr) {
+      const yesterday = new Date(today.getTime() - 86400000);
+      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+      const next = last === yesterdayStr ? streakDays.value + 1 : 1;
+      streakDays.value = next;
+      await setSetting("last_practice_date", todayStr);
+      await setSetting("streak_days", String(next));
+    }
+  } catch {
+    // 忽略连续天数写入失败
+  }
+}
 </script>
 
 <template>
@@ -314,6 +498,30 @@ onBeforeUnmount(() => {
             重新开始
           </button>
         </div>
+      </div>
+
+      <!-- 快捷入口 + 轻量概览 -->
+      <div class="mb-4 grid grid-cols-2 gap-3">
+        <button
+          class="rounded-xl border border-gray-200 bg-white p-4 text-left transition hover:border-blue-300"
+          @click="store.startPractice({ kind: 'fault', tagId: null })"
+        >
+          <div class="text-sm font-medium">错题复习</div>
+          <div class="mt-0.5 text-xs text-gray-400">已答错的题</div>
+        </button>
+        <button
+          class="rounded-xl border border-gray-200 bg-white p-4 text-left transition hover:border-blue-300"
+          @click="store.startPractice({ kind: 'collect', tagId: null })"
+        >
+          <div class="text-sm font-medium">收藏刷题</div>
+          <div class="mt-0.5 text-xs text-gray-400">手动收藏的题</div>
+        </button>
+      </div>
+      <div
+        v-if="streakDays > 0"
+        class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-600"
+      >
+        已连续刷题 {{ streakDays }} 天，继续保持 ✦
       </div>
 
       <div class="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
@@ -410,12 +618,30 @@ onBeforeUnmount(() => {
         {{ errorMsg }}
       </p>
 
+      <div
+        v-if="aiPaused"
+        class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-600"
+      >
+        AI 服务暂不可用，已暂停本次会话
+      </div>
+
+      <!-- 轻量激励文案 -->
+      <div
+        v-if="encourageMsg"
+        class="mb-3 text-center text-sm font-medium text-amber-600 transition-opacity"
+      >
+        {{ encourageMsg }}
+      </div>
+
       <QuestionCard
         v-if="currentQuestion"
         :key="currentQuestion.id"
         :question="currentQuestion"
         :index="currentIndex"
         :total="questions.length"
+        :ai-judge-result="aiJudgeResult"
+        :ai-judging="aiJudging"
+        :ai-analysis-text="aiAnalysisText"
         @submitted="onSubmitted"
         @override="onOverride"
         @toggle-collect="onToggleCollect"
