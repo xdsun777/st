@@ -42,15 +42,15 @@ pub async fn submit_answer(
     .await
     .map_err(|e| e.to_string())?;
 
-    let final_result = resolve_result(input.machine_result, input.manual_result);
+    let final_result = resolve_result(input.machine_result, None, input.manual_result);
     let is_fault: i64 = if final_result == Some(0) { 1 } else { 0 };
     let fault_count: i64 = if is_fault == 1 { hist.0 + 1 } else { hist.0 };
 
     let now = now_ms();
     let id = sqlx::query(
         "INSERT INTO answer_record
-           (question_id, user_answer, machine_result, manual_result, is_fault, is_collect, fault_count, finish_time)
-         VALUES (?1, ?2, ?3, ?4, ?5, 0, ?6, ?7)",
+           (question_id, user_answer, machine_result, ai_result, manual_result, is_fault, is_collect, fault_count, finish_time)
+         VALUES (?1, ?2, ?3, NULL, ?4, ?5, 0, ?6, ?7)",
     )
     .bind(input.question_id)
     .bind(input.user_answer.as_deref())
@@ -71,6 +71,7 @@ pub async fn submit_answer(
         question_id: input.question_id,
         user_answer: input.user_answer,
         machine_result: input.machine_result,
+        ai_result: None,
         manual_result: input.manual_result,
         is_fault,
         is_collect: 0,
@@ -190,8 +191,8 @@ pub async fn update_collect(
         // 无做题记录：插入一条仅承载收藏标记的记录
         sqlx::query(
             "INSERT INTO answer_record
-               (question_id, user_answer, machine_result, manual_result, is_fault, is_collect, fault_count, finish_time)
-             VALUES (?1, NULL, NULL, NULL, 0, ?2, 0, ?3)",
+               (question_id, user_answer, machine_result, ai_result, manual_result, is_fault, is_collect, fault_count, finish_time)
+             VALUES (?1, NULL, NULL, NULL, NULL, 0, ?2, 0, ?3)",
         )
         .bind(question_id)
         .bind(if is_collect { 1 } else { 0 })
@@ -282,7 +283,7 @@ pub async fn get_answer_records(
 ) -> Result<Vec<AnswerRecord>, String> {
     let pool = sqlite_pool(&pool)?;
     let records = sqlx::query_as::<_, AnswerRecord>(
-        "SELECT id, question_id, user_answer, machine_result, manual_result,
+        "SELECT id, question_id, user_answer, machine_result, ai_result, manual_result,
                 is_fault, is_collect, fault_count, finish_time
          FROM answer_record
          WHERE question_id = ?1

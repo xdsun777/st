@@ -9,8 +9,8 @@ use tauri_plugin_fs::{FilePath, FsExt};
 
 use crate::common::{now_ms, sqlite_pool};
 use crate::models::{
-    AnswerRecord, BackupData, BackupResult, PracticeSession, QuestionBankRow, QuestionRow,
-    QuestionTagRow, Tag,
+    AiAnalysisRow, AnswerRecord, BackupData, BackupResult, PracticeSession, QuestionBankRow,
+    QuestionRow, QuestionTagRow, SettingRow, Tag,
 };
 
 const BACKUP_VERSION: u32 = 1;
@@ -116,14 +116,15 @@ pub async fn import_backup(
     for ar in &data.answer_records {
         sqlx::query(
             "INSERT INTO answer_record
-               (id, question_id, user_answer, machine_result, manual_result,
+               (id, question_id, user_answer, machine_result, ai_result, manual_result,
                 is_fault, is_collect, fault_count, finish_time)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         )
         .bind(ar.id)
         .bind(ar.question_id)
         .bind(ar.user_answer.as_deref())
         .bind(ar.machine_result)
+        .bind(ar.ai_result)
         .bind(ar.manual_result)
         .bind(ar.is_fault)
         .bind(ar.is_collect)
@@ -145,6 +146,30 @@ pub async fn import_backup(
         .bind(ps.current_index)
         .bind(&ps.practice_mode)
         .bind(ps.create_time)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+    for s in &data.settings {
+        sqlx::query(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        )
+        .bind(&s.key)
+        .bind(&s.value)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+    for a in &data.ai_analysis {
+        sqlx::query(
+            "INSERT OR REPLACE INTO ai_analysis_cache (question_id, answer_hash, analysis, create_time)
+             VALUES (?1, ?2, ?3, ?4)",
+        )
+        .bind(a.question_id)
+        .bind(&a.answer_hash)
+        .bind(&a.analysis)
+        .bind(a.create_time)
         .execute(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;
@@ -196,7 +221,7 @@ async fn read_all(pool: &sqlx::SqlitePool) -> Result<BackupData, String> {
             .map_err(|e| e.to_string())?;
 
     let answer_records = sqlx::query_as::<_, AnswerRecord>(
-        "SELECT id, question_id, user_answer, machine_result, manual_result,
+        "SELECT id, question_id, user_answer, machine_result, ai_result, manual_result,
                 is_fault, is_collect, fault_count, finish_time
          FROM answer_record ORDER BY id",
     )
@@ -212,6 +237,19 @@ async fn read_all(pool: &sqlx::SqlitePool) -> Result<BackupData, String> {
     .await
     .map_err(|e| e.to_string())?;
 
+    let settings = sqlx::query_as::<_, SettingRow>("SELECT key, value FROM settings ORDER BY key")
+        .fetch_all(pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let ai_analysis = sqlx::query_as::<_, AiAnalysisRow>(
+        "SELECT question_id, answer_hash, analysis, create_time
+         FROM ai_analysis_cache ORDER BY question_id, answer_hash",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
     Ok(BackupData {
         version: BACKUP_VERSION,
         exported_at: now_ms(),
@@ -221,12 +259,18 @@ async fn read_all(pool: &sqlx::SqlitePool) -> Result<BackupData, String> {
         question_tags,
         answer_records,
         practice_sessions,
+        settings,
+        ai_analysis,
     })
 }
 
 /// 清空全部业务表（恢复导入前调用）。顺序：先删引用表，再删主表。
 async fn clear_all(tx: &mut sqlx::SqliteConnection) -> Result<(), String> {
     sqlx::query("DELETE FROM answer_record")
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    sqlx::query("DELETE FROM ai_analysis_cache")
         .execute(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;
@@ -239,6 +283,10 @@ async fn clear_all(tx: &mut sqlx::SqliteConnection) -> Result<(), String> {
         .await
         .map_err(|e| e.to_string())?;
     sqlx::query("DELETE FROM practice_session")
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+    sqlx::query("DELETE FROM settings")
         .execute(&mut *tx)
         .await
         .map_err(|e| e.to_string())?;
@@ -302,6 +350,7 @@ mod tests {
                 question_id: 1,
                 user_answer: Some("B".into()),
                 machine_result: Some(1),
+                ai_result: None,
                 manual_result: None,
                 is_fault: 0,
                 is_collect: 1,
@@ -316,6 +365,8 @@ mod tests {
                 practice_mode: "order".into(),
                 create_time: 3,
             }],
+            settings: vec![],
+            ai_analysis: vec![],
         }
     }
 

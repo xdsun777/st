@@ -1,6 +1,6 @@
 //! 统计模块：SQL 聚合计算，返回简单数值给前端渲染（技术文档 5.4）。
 //!
-//! 判分口径：manual_result 优先于 machine_result（业务文档 7.3）。
+//! 判分口径：manual > ai > machine（业务文档 6.5）。
 //! 删除题目时 answer_record 级联删除，统计数据自动同步更新（业务文档 7.4）。
 
 use tauri::State;
@@ -17,9 +17,9 @@ pub async fn get_stats(pool: State<'_, sqlx::SqlitePool>) -> Result<StatsSummary
            (SELECT COUNT(*) FROM question) AS total_questions,
            (SELECT COUNT(*) FROM answer_record) AS total_records,
            (SELECT COUNT(*) FROM answer_record
-              WHERE COALESCE(manual_result, machine_result) = 1) AS correct_count,
+              WHERE COALESCE(manual_result, ai_result, machine_result) = 1) AS correct_count,
            (SELECT COUNT(*) FROM answer_record
-              WHERE COALESCE(manual_result, machine_result) = 0) AS wrong_count",
+              WHERE COALESCE(manual_result, ai_result, machine_result) = 0) AS wrong_count",
     )
     .fetch_one(pool)
     .await
@@ -49,10 +49,10 @@ pub async fn get_bank_stats(pool: State<'_, sqlx::SqlitePool>) -> Result<Vec<Ban
               WHERE q.bank_id = b.id) AS total_records,
            (SELECT COUNT(*) FROM answer_record ar
               JOIN question q ON q.id = ar.question_id
-              WHERE q.bank_id = b.id AND COALESCE(ar.manual_result, ar.machine_result) = 1) AS correct_count,
+              WHERE q.bank_id = b.id AND COALESCE(ar.manual_result, ar.ai_result, ar.machine_result) = 1) AS correct_count,
            (SELECT COUNT(*) FROM answer_record ar
               JOIN question q ON q.id = ar.question_id
-              WHERE q.bank_id = b.id AND COALESCE(ar.manual_result, ar.machine_result) = 0) AS wrong_count
+              WHERE q.bank_id = b.id AND COALESCE(ar.manual_result, ar.ai_result, ar.machine_result) = 0) AS wrong_count
          FROM question_bank b
          ORDER BY b.id",
     )
