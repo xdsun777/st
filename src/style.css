@@ -136,7 +136,7 @@ body * {
   border-color: var(--color-border);
 }
 .dark .border-gray-300 {
-  border-color: #3a4150;
+  border-color: var(--color-border);
 }
 .dark .border-blue-400 {
   border-color: var(--color-primary);
@@ -158,10 +158,10 @@ body * {
 }
 
 .dark .bg-blue-600 {
-  background-color: var(--color-primary);
+  background-color: #2563eb;
 }
 .dark .bg-blue-500 {
-  background-color: var(--color-primary);
+  background-color: #3b82f6;
 }
 
 .dark .hover\:bg-gray-50:hover {
@@ -196,4 +196,82 @@ body * {
 }
 .dark .hover\:border-amber-300:hover {
   border-color: #8a6d2f;
+}
+
+/* ============ 深色模式：表单控件适配（设计规范 4.5） ============ */
+/* 输入框 / 多行文本框 / 下拉框：背景=卡片色、文字=主文字、边框=边框色 */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark textarea,
+.dark select {
+  background-color: var(--color-card);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+/* 占位符用次要文字色 */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--color-text-secondary);
+}
+
+/* 下拉选项也同步深色，避免弹层白底 */
+.dark select option {
+  background-color: var(--color-card);
+  color: var(--color-text);
+}
+
+/* 禁用态降透明度，保留不可编辑的视觉提示 */
+.dark input:disabled,
+.dark textarea:disabled {
+  opacity: 0.6;
+}
+
+/* ============ 桌面标题栏按钮（自 TitleBar 迁移到主题，双主题适配） ============ */
+.titlebar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 100%;
+  color: var(--color-text-secondary);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.titlebar-button:hover {
+  background-color: #f3f4f6;
+  color: var(--color-text);
+}
+.dark .titlebar-button:hover {
+  background-color: #2a303c;
+}
+.titlebar-button--close:hover {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+/* ============ 补齐遗漏的深色重映射 ============ */
+.dark .bg-blue-50\/40 {
+  background-color: rgba(96, 165, 250, 0.1);
+}
+.dark .hover\:bg-blue-700:hover {
+  background-color: #1d4ed8;
+}
+.dark .text-gray-300 {
+  color: #9ca3af;
+}
+.dark .border-gray-50 {
+  border-color: var(--color-border);
+}
+.dark .border-blue-300 {
+  border-color: #2c4a70;
+}
+.dark .border-blue-500 {
+  border-color: var(--color-primary);
+}
+.dark .border-amber-200 {
+  border-color: #8a6d2f;
+}
+.dark .hover\:border-blue-300:hover {
+  border-color: #2c4a70;
 }

@@ -51,26 +51,3 @@ function close() {
   </header>
 </template>
 
-<style scoped>
-.titlebar-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 100%;
-  color: #6b7280;
-  user-select: none;
-  -webkit-user-select: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.titlebar-button:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
-
-.titlebar-button--close:hover {
-  background: #ef4444;
-  color: #ffffff;
-}
-</style>
