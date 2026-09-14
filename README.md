@@ -1,6 +1,20 @@
 # 再刷一题（st）
 
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License" />
+  <img src="https://img.shields.io/badge/Tauri-2.x-orange" alt="Tauri 2" />
+  <img src="https://img.shields.io/badge/Vue-3.x-42b883" alt="Vue 3" />
+  <img src="https://img.shields.io/badge/Rust-stable-orange" alt="Rust" />
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Android-lightgrey" alt="Platform" />
+</p>
+
 **移动端优先**的沉浸式刷题 App：支持 CSV/Excel 题库导入、五种题型刷题、错题本、收藏、统计与备份恢复。无账号、无广告、无社交，**默认纯离线**，所有数据保存在本机。
+
+<p align="center">
+  <img src="docs/screenshots/02-practice-correct.jpg" width="26%" alt="刷题 · 答对即时反馈" />
+  <img src="docs/screenshots/08-dark-theme.jpg" width="26%" alt="深色主题 · 沉浸式刷题" />
+  <img src="docs/screenshots/05-mine.jpg" width="26%" alt="我的 · 收纳复习与数据" />
+</p>
 
 - 桌面端：Windows `.exe` / Linux `AppImage`（Tauri 2）
 - 移动端：Android `.apk`（第一优先体验，自用不上商店）
@@ -34,6 +48,30 @@
 | AI 错题解析 | 答错后异步生成解析，按「题目ID+作答哈希」本地缓存，失败静默降级 |
 | 轻量激励 | 连续答对轻文案、本地连续天数提示 |
 
+## 应用截图
+
+### 刷题核心流
+
+<p align="center">
+  <img src="docs/screenshots/01-practice-home.jpg" width="23%" alt="刷题首页" />
+  <img src="docs/screenshots/02-practice-correct.jpg" width="23%" alt="答对" />
+  <img src="docs/screenshots/03-practice-wrong.jpg" width="23%" alt="答错" />
+  <img src="docs/screenshots/04-fault-book.jpg" width="23%" alt="错题本" />
+</p>
+
+> 左上：刷题首页（选题库集、顺序/随机）；左二：作答正确即时反馈；右二：答错自动归集错题本；右一：错题本列表（按题去重、累计做错次数）。
+
+### 复习数据 · 主题与设置
+
+<p align="center">
+  <img src="docs/screenshots/06-stats.jpg" width="23%" alt="刷题统计" />
+  <img src="docs/screenshots/05-mine.jpg" width="23%" alt="我的" />
+  <img src="docs/screenshots/07-settings.jpg" width="23%" alt="设置页" />
+  <img src="docs/screenshots/08-dark-theme.jpg" width="23%" alt="深色主题" />
+</p>
+
+> 左一：刷题统计（总题量、刷题量、正确率、分题库统计）；左二：「我的」一级导航入口；右二：设置页（主题三态 + AI 配置）；右一：深色主题沉浸式刷题。
+
 ## 技术栈
 
 - **应用外壳**：Tauri 2（Rust）
@@ -45,7 +83,8 @@
 ## 目录结构
 
 ```
-├── docs/                     # 设计文档（业务/技术/功能总览与设计规范）
+├── docs/                     # 设计文档（业务/技术/功能总览与设计规范）与截图
+│   └── screenshots/          # README 引用的移动端截图
 ├── src/                      # 前端
 │   ├── api.ts                # Tauri Command 封装（前端不直接操作数据库/文件）
 │   ├── types/index.ts        # TS 类型定义（与后端模型对齐）
