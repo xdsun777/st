@@ -106,6 +106,11 @@ export function updateFault(questionId: number, isFault: boolean): Promise<void>
   return invoke<void>("update_fault", { questionId, isFault });
 }
 
+/** 前端 JS 判题后写回 AI 判分（同步统计与错题本） */
+export function updateAiResult(recordId: number, aiResult: number): Promise<void> {
+  return invoke<void>("update_ai_result", { recordId, aiResult });
+}
+
 export function updateManualResult(questionId: number, manualResult: number): Promise<void> {
   return invoke<void>("update_manual_result", { questionId, manualResult });
 }
@@ -142,4 +147,69 @@ export function exportBackup(path: string): Promise<BackupResult> {
 
 export function importBackup(path: string): Promise<BackupResult> {
   return invoke<BackupResult>("import_backup", { path });
+}
+
+// ---------- 设置 ----------
+export function getSetting(key: string): Promise<string | null> {
+  return invoke<string | null>("get_setting", { key });
+}
+
+export function setSetting(key: string, value: string): Promise<void> {
+  return invoke<void>("set_setting", { key, value });
+}
+
+export interface AiConfig {
+  base_url: string;
+  model: string;
+  api_key_masked: string;
+  judge_enabled: boolean;
+  analysis_enabled: boolean;
+}
+
+/** 读取完整 AI 配置（含完整 Key）。仅前端 JS 直调 axios 时使用；Key 不落任何持久化存储 */
+export function getAiConfigFull(): Promise<{
+  base_url: string;
+  api_key: string;
+  model: string;
+  judge_enabled: boolean;
+  analysis_enabled: boolean;
+}> {
+  return invoke("get_ai_config_full");
+}
+
+export function getAiConfig(): Promise<AiConfig> {
+  return invoke<AiConfig>("get_ai_config");
+}
+
+export function saveAiConfig(input: {
+  base_url: string;
+  api_key: string;
+  model: string;
+  judge_enabled: boolean;
+  analysis_enabled: boolean;
+}): Promise<void> {
+  // Tauri 命令参数需 camelCase，由 Tauri 自动映射到 Rust 的 snake_case
+  return invoke<void>("save_ai_config", {
+    baseUrl: input.base_url,
+    apiKey: input.api_key,
+    model: input.model,
+    judgeEnabled: input.judge_enabled,
+    analysisEnabled: input.analysis_enabled,
+  });
+}
+
+// ---------- AI ----------
+/** 读取 AI 错题解析缓存（题目ID + 作答哈希） */
+export function getAiAnalysis(questionId: number, answerHash: string): Promise<string | null> {
+  return invoke<string | null>("get_ai_analysis", { questionId, answerHash });
+}
+
+/** 写入 AI 错题解析缓存（相同错误不再重复调用计费） */
+export function saveAiAnalysis(questionId: number, answerHash: string, analysis: string): Promise<void> {
+  return invoke<void>("save_ai_analysis", { questionId, answerHash, analysis });
+}
+
+/** 清空 API Key（一键清空，恢复纯离线） */
+export function clearApiKey(): Promise<void> {
+  return invoke<void>("set_setting", { key: "ai_api_key", value: "" });
 }

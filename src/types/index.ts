@@ -76,6 +76,8 @@ export interface AnswerRecord {
   user_answer: string | null;
   /** 机器判分 0错误 1正确；简答为 null */
   machine_result: number | null;
+  /** AI 判题结果 0错误 1正确；未启用 AI 时为 null */
+  ai_result: number | null;
   /** 人工覆写结果 null/0/1，优先级高于 machine_result */
   manual_result: number | null;
   /** 是否错题 0否 1是 */
