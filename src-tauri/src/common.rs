@@ -17,9 +17,13 @@ pub fn sqlite_pool(pool: &sqlx::SqlitePool) -> Result<&sqlx::SqlitePool, String>
     Ok(pool)
 }
 
-/// 解析最终判分结果：manual_result 优先级高于 machine_result（业务文档 7.3）。
-pub fn resolve_result(machine_result: Option<i64>, manual_result: Option<i64>) -> Option<i64> {
-    manual_result.or(machine_result)
+/// 解析最终判分结果（业务文档 6.5）：manual > ai > machine。
+pub fn resolve_result(
+    machine_result: Option<i64>,
+    ai_result: Option<i64>,
+    manual_result: Option<i64>,
+) -> Option<i64> {
+    manual_result.or(ai_result).or(machine_result)
 }
 
 /// 校验题型是否合法（业务文档 4.1）
@@ -70,13 +74,13 @@ mod tests {
     #[test]
     fn test_resolve_result_manual_priority() {
         // manual 优先
-        assert_eq!(resolve_result(Some(0), Some(1)), Some(1));
-        assert_eq!(resolve_result(Some(1), Some(0)), Some(0));
+        assert_eq!(resolve_result(Some(0), None, Some(1)), Some(1));
+        assert_eq!(resolve_result(Some(1), None, Some(0)), Some(0));
         // 无 manual 时用 machine
-        assert_eq!(resolve_result(Some(1), None), Some(1));
-        assert_eq!(resolve_result(None, None), None);
+        assert_eq!(resolve_result(Some(1), None, None), Some(1));
+        assert_eq!(resolve_result(None, None, None), None);
         // essay：无机器判分，仅 manual
-        assert_eq!(resolve_result(None, Some(1)), Some(1));
+        assert_eq!(resolve_result(None, None, Some(1)), Some(1));
     }
 
     #[test]

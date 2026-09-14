@@ -103,6 +103,17 @@ pub struct BatchInsertResult {
     pub skipped_details: Vec<String>,
 }
 
+/// AI 配置（返回给设置页；API Key 仅返回脱敏值）
+#[derive(Debug, Clone, Serialize)]
+pub struct AiConfig {
+    pub base_url: String,
+    pub model: String,
+    /// 脱敏 Key：前 4 后 4；未配置为空
+    pub api_key_masked: String,
+    pub judge_enabled: bool,
+    pub analysis_enabled: bool,
+}
+
 /// 标签（tag）
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Tag {
@@ -134,6 +145,8 @@ pub struct AnswerRecord {
     pub user_answer: Option<String>,
     /// 机器判分 0错误 1正确；简答为 null
     pub machine_result: Option<i64>,
+    /// AI 判题结果 0错误 1正确；未启用 AI 时为 null
+    pub ai_result: Option<i64>,
     /// 人工覆写结果 null/0/1，优先级高于 machine_result
     pub manual_result: Option<i64>,
     /// 是否错题 0否 1是
@@ -204,6 +217,38 @@ pub struct BackupData {
     pub question_tags: Vec<QuestionTagRow>,
     pub answer_records: Vec<AnswerRecord>,
     pub practice_sessions: Vec<PracticeSession>,
+    /// 设置项（主题 / AI 配置；旧备份可能没有）
+    #[serde(default)]
+    pub settings: Vec<SettingRow>,
+    /// AI 解析缓存（旧备份可能没有）
+    #[serde(default)]
+    pub ai_analysis: Vec<AiAnalysisRow>,
+}
+
+/// 完整 AI 配置（含完整 Key，仅前端 JS 直调 axios 时经命令读入内存）
+#[derive(Debug, Clone, Serialize)]
+pub struct AiConfigFull {
+    pub base_url: String,
+    pub api_key: String,
+    pub model: String,
+    pub judge_enabled: bool,
+    pub analysis_enabled: bool,
+}
+
+/// 设置项行（settings 表）
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct SettingRow {
+    pub key: String,
+    pub value: String,
+}
+
+/// AI 解析缓存行（ai_analysis_cache 表）
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct AiAnalysisRow {
+    pub question_id: i64,
+    pub answer_hash: String,
+    pub analysis: String,
+    pub create_time: i64,
 }
 
 /// 备份导出/恢复结果

@@ -52,6 +52,20 @@ pub const MIGRATIONS: &[&str] = &[
       practice_mode TEXT NOT NULL,
       create_time INTEGER NOT NULL
     );",
+    // 设置项（key-value：主题与 AI 配置）
+    "CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );",
+    // AI 解析缓存（按 题目+作答哈希 缓存，避免重复调用计费）
+    "CREATE TABLE IF NOT EXISTS ai_analysis_cache (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id INTEGER NOT NULL REFERENCES question(id) ON DELETE CASCADE,
+      answer_hash TEXT NOT NULL,
+      analysis TEXT NOT NULL,
+      create_time INTEGER NOT NULL,
+      UNIQUE(question_id, answer_hash)
+    );",
 ];
 
 /// 执行建表迁移（幂等，应用启动时调用）
@@ -61,6 +75,33 @@ pub async fn init_schema(pool: &sqlx::SqlitePool) -> Result<(), String> {
             .execute(pool)
             .await
             .map_err(|e| format!("建表失败：{e}\nSQL: {sql}"))?;
+    }
+    // answer_record.ai_result 列迁移（SQLite 的 ALTER TABLE 不支持 IF NOT EXISTS）
+    ensure_column(pool, "answer_record", "ai_result", "INTEGER").await?;
+    Ok(())
+}
+
+/// 若列不存在则添加（幂等列迁移）
+async fn ensure_column(
+    pool: &sqlx::SqlitePool,
+    table: &str,
+    column: &str,
+    decl: &str,
+) -> Result<(), String> {
+    let exists: Option<(i64,)> = sqlx::query_as(
+        "SELECT 1 FROM pragma_table_info(?1) WHERE name = ?2 LIMIT 1",
+    )
+    .bind(table)
+    .bind(column)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if exists.is_none() {
+        sqlx::query(&format!("ALTER TABLE {table} ADD COLUMN {column} {decl}"))
+            .execute(pool)
+            .await
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }
