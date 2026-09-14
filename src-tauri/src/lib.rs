@@ -61,6 +61,15 @@ pub fn run() {
             // 备份
             commands::backup::export_backup,
             commands::backup::import_backup,
+            // 设置项（主题 / AI 配置）
+            commands::settings::get_setting,
+            commands::settings::set_setting,
+            commands::settings::get_ai_config, commands::settings::get_ai_config_full,
+            commands::settings::save_ai_config,
+            // AI 功能（可选增强）
+            commands::ai::update_ai_result,
+            commands::ai::get_ai_analysis,
+            commands::ai::save_ai_analysis,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
