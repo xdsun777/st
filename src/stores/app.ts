@@ -6,7 +6,7 @@ import type { PracticeSession } from "../types";
 export type TopViewKey = "practice" | "bank" | "mine";
 
 /** 「我的」内部子视图 */
-export type MineViewKey = "fault" | "collect" | "stats" | "backup" | "settings";
+export type MineViewKey = "fault" | "collect" | "stats" | "backup" | "settings" | "about";
 
 /** 刷题来源：从题库集、错题本或收藏发起刷题 */
 export interface PracticeSource {

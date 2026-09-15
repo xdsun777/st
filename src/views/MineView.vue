@@ -6,6 +6,7 @@ import CollectView from "./CollectView.vue";
 import StatsView from "./StatsView.vue";
 import BackupView from "./BackupView.vue";
 import SettingsView from "./SettingsView.vue";
+import AboutView from "./AboutView.vue";
 import { getCollectQuestions, getFaultQuestions } from "../api";
 
 /**
@@ -60,6 +61,12 @@ const items: { key: MineViewKey; label: string; desc: string; icon: string[]; ba
       "M15 12a3 3 0 11-6 0 3 3 0 016 0z",
     ],
   },
+  {
+    key: "about",
+    label: "关于",
+    desc: "版本与开源信息",
+    icon: ["M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"],
+  },
 ];
 
 const viewMap: Record<MineViewKey, unknown> = {
@@ -68,6 +75,7 @@ const viewMap: Record<MineViewKey, unknown> = {
   stats: StatsView,
   backup: BackupView,
   settings: SettingsView,
+  about: AboutView,
 };
 
 function openItem(key: MineViewKey) {
